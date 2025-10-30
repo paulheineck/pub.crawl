@@ -1,0 +1,33 @@
+feeds:
+- name: JPSP
+  url: https://content.apa.org/journals/psp.rss
+- name: PSPR
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psr
+- name: PSPB
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psp
+- name: GPIR
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=gpi
+- name: ERSP
+  url: https://www.tandfonline.com/feed/rss/pers20
+- name: BJSP
+  url: https://onlinelibrary.wiley.com/feed/20448309/most-recent
+- name: Nat Hum Behav
+  url: https://www.nature.com/nathumbehav.rss
+- name: JESP
+  url: https://rss.sciencedirect.com/publication/science/00221031
+- name: SPPS
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spp
+- name: EJSP
+  url: https://onlinelibrary.wiley.com/feed/10990992/most-recent
+- name: AMPPS
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=amp
+filters:
+  include: []
+  exclude:
+  - (?i)erratum|corrigendum|call for papers
+  journal_allowlist: []
+display:
+  max_items_per_feed: 30
+  show_abstract: true
+api:
+  unpaywall_email: paul.heineck@uni-wuerzburg.de

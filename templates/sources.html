@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Einstellungen · Research Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
+  <style>
+main.container { max-width: 900px; }
+table { width:100%; }
+td, th { vertical-align: top; }
+.muted { color: var(--muted-color); font-size:.95rem; }
+.row { display:flex; gap:1rem; align-items:baseline; flex-wrap:wrap; }
+textarea { min-height: 8rem; }
+
+/* Kopfzeile lockerer + Button-Abstand */
+header.row {
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+}
+header.row nav {
+  display: flex;
+  align-items: center;
+  gap: .6rem;            /* Abstand zwischen Links */
+}
+header.row nav a {
+  padding: .3rem .55rem; /* optional: Pill-Optik */
+  border-radius: 999px;
+}
+#themeBtn {
+  width: 2.4rem;
+  aspect-ratio: 1;
+  text-align: center;
+  font-size: 1.1rem;
+  padding: .35rem;
+  line-height: 1;
+  margin-left: .6rem;    /* Abstand vom letzten Link */
+}
+  </style>
+<script>
+  // Theme sehr früh setzen, verhindert FOUC
+  (function () {
+    try {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.dataset.theme = saved;
+      }
+    } catch(e) {}
+  })();
+</script>
+  
+</head>
+<body>
+<main class="container">
+<header class="row">
+  <h1>Einstellungen</h1>
+  <nav>
+    <a href="/?mode=feeds">← Zurück zu Feeds</a>
+    <a href="/?mode=stars">⭐ Leseliste</a>
+    <button id="themeBtn" title="Theme umschalten">🌓</button>
+  </nav>
+    <script>
+  // Setzt Theme sehr früh, verhindert FOUC
+  (function () {
+    try {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.dataset.theme = saved;
+      }
+    } catch(e) {}
+  })();
+</script>
+
+  </header>
+
+  {% if flash_msg %}<article class="muted">{{ flash_msg }}</article>{% endif %}
+
+  <h3>Aktive Feeds</h3>
+  <p class="muted">Hier bearbeitest du die Liste der verfügbaren Journals/Quellen. Das <strong>Allowlist</strong>-Feld unten bestimmt, welche davon im Dashboard erscheinen (leer = alle).</p>
+
+  <table>
+    <thead><tr><th>Name</th><th>RSS-URL</th><th style="width:1%;">&nbsp;</th></tr></thead>
+    <tbody>
+      {% for f in feeds %}
+      <tr>
+        <td><code>{{ f.name }}</code></td>
+        <td><a target="_blank" rel="noopener" href="{{ f.url }}">{{ f.url }}</a></td>
+        <td>
+          <form method="post" action="/settings/remove_feed" onsubmit="return confirm('Feed wirklich entfernen?');">
+            <input type="hidden" name="name" value="{{ f.name }}">
+            <button class="secondary outline">Entfernen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Neuen Feed hinzufügen</summary>
+    <form method="post" action="/settings/add_feed" id="addForm">
+      <label> Name
+        <input name="name" required placeholder="z. B. JESP">
+      </label>
+      <label> RSS-URL
+        <input name="url" required placeholder="https://…/rss">
+      </label>
+      <div class="row">
+        <button type="button" id="testBtn">Feed testen</button>
+        <span id="testOut" class="muted"></span>
+      </div>
+      <button type="submit">Hinzufügen</button>
+    </form>
+  </details>
+
+  <h3>Allowlist (welche Feeds zeigen?)</h3>
+  <p class="muted">Leer = alle Feeds erlaubt. Andernfalls werden nur die angehakten Feeds angezeigt.</p>
+  <form method="post" action="/settings/update_allowlist">
+    <div class="row" style="gap:1.25rem;">
+      {% for f in feeds %}
+        <label>
+          <input type="checkbox" name="allow" value="{{ f.name }}" {% if f.name in allow %}checked{% endif %}>
+          {{ f.name }}
+        </label>
+      {% endfor %}
+    </div>
+    <div class="row">
+      <button type="button" id="selectAll">Alle</button>
+      <button type="button" id="selectNone">Keine</button>
+      <button type="submit">Speichern</button>
+    </div>
+  </form>
+
+<h3>Darstellung</h3>
+<form onsubmit="return false;">
+  <label style="display:flex;align-items:center;gap:.5rem;">
+    <input type="checkbox" id="animToggle">
+    Kartenbewegung beim Liken/Ausblenden animieren
+  </label>
+</form>
+
+<script>
+  // --- Animation-Setting laden/speichern ---
+  const animToggle = document.getElementById('animToggle');
+  try {
+    animToggle.checked = localStorage.getItem('animateCards') !== '0';
+  } catch(e){}
+
+  animToggle.addEventListener('change', () => {
+    try {
+      localStorage.setItem('animateCards', animToggle.checked ? '1' : '0');
+    } catch(e){}
+  });
+</script>
+
+<form method="post" action="/settings/update_api">
+  <h3>API-Einstellungen</h3>
+  <label>
+    Unpaywall-Email:
+    <input type="email" name="unpaywall_email" value="{{ unpaywall_email or '' }}" placeholder="name@example.com" required>
+  </label>
+  <button type="submit">Speichern</button>
+</form>
+
+  <h3>Filter (Regex)</h3>
+  <p class="muted">Je Zeile ein Muster. <code>include</code> wird ODER-verknüpft; nur Treffer werden angezeigt. <code>exclude</code> wird verworfen.</p>
+  <form method="post" action="/settings/update_filters">
+    <label>Include-Muster
+      <textarea name="include">{% for p in include %}{{ p }}
+{% endfor %}</textarea>
+    </label>
+    <label>Exclude-Muster
+      <textarea name="exclude">{% for p in exclude %}{{ p }}
+{% endfor %}</textarea>
+    </label>
+    <button type="submit">Filter speichern</button>
+  </form>
+
+  <p class="muted">Hinweis: Änderungen invalidieren den Cache sofort.</p>
+</main>
+
+<script>
+document.getElementById('testBtn')?.addEventListener('click', async () => {
+  const form = document.getElementById('addForm');
+  const url = form.querySelector('input[name="url"]').value.trim();
+  const out = document.getElementById('testOut');
+  if (!url) { out.textContent = 'Bitte URL eingeben.'; return; }
+  out.textContent = 'Teste…';
+  const res = await fetch('/settings/test_feed', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({url})
+  });
+  const j = await res.json();
+  out.textContent = j.ok ? `OK – ${j.count} Einträge${j.title ? ' • '+j.title : ''}` : `Fehler: ${j.error}`;
+});
+
+document.getElementById('selectAll')?.addEventListener('click', () => {
+  document.querySelectorAll('input[name="allow"]').forEach(cb => cb.checked = true);
+});
+document.getElementById('selectNone')?.addEventListener('click', () => {
+  document.querySelectorAll('input[name="allow"]').forEach(cb => cb.checked = false);
+});
+  // --- Darkmode Toggle (persistiert in localStorage) ---
+const html = document.documentElement;
+const themeBtn = document.getElementById('themeBtn');
+
+function setTheme(mode) {
+  html.dataset.theme = mode;
+  localStorage.setItem('theme', mode);
+}
+
+const saved = localStorage.getItem('theme');
+setTheme(saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+themeBtn.addEventListener('click', () => {
+  const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  setTheme(next);
+});
+
+</script>
+</body>
+</html>
