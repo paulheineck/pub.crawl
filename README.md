@@ -1,7 +1,7 @@
 # 📰 readr — A Minimal Local Research Feed Reader
 
 **readr** is a lightweight, privacy-friendly Flask web app that aggregates journal RSS feeds for academic researchers.
-It lets you **skim, star, and organize** new papers (like a minimalist Tinder for research articles),
+It lets you **skim, star, and organize** new papers,
 with Open Access and citation tools built right in.
 
 ---
