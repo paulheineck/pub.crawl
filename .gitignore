@@ -10,6 +10,8 @@ env/
 
 # SQLite DB & Cache
 dashboard.db
+dashboard.db-wal
+dashboard.db-shm
 seen.db
 *.sqlite
 *.sqlite3

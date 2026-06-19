@@ -213,12 +213,19 @@ def ris_from_crossref(cr: dict):
 # ----------------------------- DB (read/star state) --------------------------
 
 def db():
-    con = sqlite3.connect(DB_PATH)
+    # timeout = Busy-Timeout: warte statt sofort "database is locked" zu werfen
+    con = sqlite3.connect(DB_PATH, timeout=30)
     con.row_factory = sqlite3.Row
     return con
 
 def init_db():
     con = db()
+    # WAL: Leser blockieren Schreiber nicht (und umgekehrt) – robuster bei
+    # parallelen Feed-Fetches.
+    try:
+        con.execute("PRAGMA journal_mode=WAL")
+    except Exception:
+        pass
     con.executescript("""
     CREATE TABLE IF NOT EXISTS items(
         id TEXT PRIMARY KEY,
@@ -299,57 +306,63 @@ def fetch_one_feed(feed_cfg, include_res, exclude_res, max_items):
         r.raise_for_status()
         d = feedparser.parse(r.content)
         entries = []
-        con = db()  # eine Verbindung pro Feed statt eine pro Artikel
-        try:
-            for e in d.entries[:max_items]:
-                title = e.get("title","").strip()
-                link  = e.get("link","")
-                raw_summary = e.get("summary", "") or e.get("description", "") or ""
-                summary_raw = clean_html(raw_summary)
-                authors_display, authors_full = extract_authors_from_feedentry(e)
-                if summary_raw.strip() in {".", ""}:
-                    summary_raw = ""
-                if not match_filters(title, summary_raw, include_res, exclude_res):
-                    continue
+        seen_rows = []   # (iid, name, link, title) – wird am Ende in einem Rutsch geschrieben
+        for e in d.entries[:max_items]:
+            title = e.get("title","").strip()
+            link  = e.get("link","")
+            raw_summary = e.get("summary", "") or e.get("description", "") or ""
+            summary_raw = clean_html(raw_summary)
+            authors_display, authors_full = extract_authors_from_feedentry(e)
+            if summary_raw.strip() in {".", ""}:
+                summary_raw = ""
+            if not match_filters(title, summary_raw, include_res, exclude_res):
+                continue
 
-                iid = make_item_id(name, link, title)
-                con.execute(
+            iid = make_item_id(name, link, title)
+            seen_rows.append((iid, name, link, title))
+
+            # DOI & kleine Stats
+            doi = find_doi(title, summary_raw)
+            stats = extract_stats(summary_raw)
+
+            # Falls kein DOI, Crossref versuchen
+            if not doi and title:
+                doi = find_doi_via_crossref(title)
+
+            # Highlight terms
+            highlight_regexes = include_res or []
+            h_title, t_hit = highlight_terms(title, highlight_regexes)
+            h_summary, s_hit = highlight_terms(summary_raw, highlight_regexes)
+
+            entries.append({
+                "id": iid,
+                "title": title,
+                "title_html": h_title if (t_hit) else title,
+                "link": link,
+                "authors": authors_display,
+                "authors_full": authors_full,
+                "date": parse_date(e),
+                "date_rel": rel_datetime(parse_date(e)) if parse_date(e) else "",
+                "summary": summary_raw[:800] + ("…" if len(summary_raw)>800 else ""),
+                "summary_html": h_summary if (s_hit) else summary_raw[:800] + ("…" if len(summary_raw)>800 else ""),
+                "journal": name,
+                "doi": doi,
+                "stats": stats
+            })
+
+        # DB erst NACH der Netzwerk-Arbeit anfassen: kurze Schreib-Transaktion,
+        # damit die SQLite-Sperre nicht über die langsamen HTTP-Calls gehalten wird.
+        if seen_rows:
+            con = db()
+            try:
+                con.executemany(
                     "INSERT OR IGNORE INTO items(id, feed, link, title, first_seen) "
                     "VALUES(?,?,?,?,datetime('now'))",
-                    (iid, name, link, title)
+                    seen_rows
                 )
-
-                # DOI & kleine Stats
-                doi = find_doi(title, summary_raw)
-                stats = extract_stats(summary_raw)
-
-                # Falls kein DOI, Crossref versuchen
-                if not doi and title:
-                    doi = find_doi_via_crossref(title)
-
-                # Highlight terms
-                highlight_regexes = include_res or []
-                h_title, t_hit = highlight_terms(title, highlight_regexes)
-                h_summary, s_hit = highlight_terms(summary_raw, highlight_regexes)
-
-                entries.append({
-                    "id": iid,
-                    "title": title,
-                    "title_html": h_title if (t_hit) else title,
-                    "link": link,
-                    "authors": authors_display,
-                    "authors_full": authors_full,
-                    "date": parse_date(e),
-                    "date_rel": rel_datetime(parse_date(e)) if parse_date(e) else "",
-                    "summary": summary_raw[:800] + ("…" if len(summary_raw)>800 else ""),
-                    "summary_html": h_summary if (s_hit) else summary_raw[:800] + ("…" if len(summary_raw)>800 else ""),
-                    "journal": name,
-                    "doi": doi,
-                    "stats": stats
-                })
-            con.commit()
-        finally:
-            con.close()
+                con.commit()
+            finally:
+                con.close()
         return {"name": name, "entries": entries, "error": None, "count": len(entries)}
     except Exception as ex:
         return {"name": name, "entries": [], "error": str(ex), "count": 0}
