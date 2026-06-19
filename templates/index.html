@@ -235,7 +235,15 @@ body.deck .item.deck-top::after {
 }
 body.deck .item.deck-top.stack1::before { transform: translateY(8px)  scale(.975); }
 body.deck .item.deck-top.stack2::after  { transform: translateY(16px) scale(.95); }
+/* Suche/Erledigt schlägt deck-top (Geisterkarten verhindern) */
+body.deck .item.hidden, body.deck .item.gone { display: none; }
 body.deck #progress { text-align: center; font-size: 1rem; margin-top: 1rem; }
+
+/* Während Suche im Stapelmodus: zurück zur Listendarstellung (alle Treffer) */
+body.deck.searching .item { display: block; max-width: none; margin: 0; box-shadow: none; }
+body.deck.searching .item + .item { margin-top: .8rem; }
+body.deck.searching .item.hidden, body.deck.searching .item.gone { display: none; }
+body.deck.searching #progress { text-align: left; font-size: inherit; margin-top: .2rem; }
 
   </style>
 </head>
@@ -534,26 +542,38 @@ body.deck #progress { text-align: center; font-size: 1rem; margin-top: 1rem; }
     let lastN = initialCount;
 
     function updateView() {
-      const items = visibleItems();
+      const items = visibleItems();   // ohne .hidden (Suche) und .gone (erledigt)
       const n = items.length;
-      if (body.classList.contains('deck')) {
-        items.forEach((el, i) => {
-          el.classList.toggle('deck-top', i === 0);
-          el.classList.toggle('stack1', i === 0 && n >= 2);
-          el.classList.toggle('stack2', i === 0 && n >= 3);
-        });
-      } else {
-        document.querySelectorAll('.deck-top').forEach(el =>
-          el.classList.remove('deck-top', 'stack1', 'stack2'));
+      const searching = q.value.trim() !== '';
+
+      // Während einer Suche im Stapelmodus vorübergehend als Liste zeigen,
+      // damit man ALLE Treffer sieht (sonst nur den obersten).
+      body.classList.toggle('searching', searching);
+
+      // deck-top IMMER erst überall entfernen, dann nur auf die oberste
+      // *sichtbare* Karte setzen – sonst bliebe eine weggefilterte Karte als
+      // "Geisterkarte" stehen.
+      document.querySelectorAll('.item.deck-top').forEach(el =>
+        el.classList.remove('deck-top', 'stack1', 'stack2'));
+      if (body.classList.contains('deck') && !searching && items[0]) {
+        items[0].classList.add('deck-top');
+        if (n >= 2) items[0].classList.add('stack1');
+        if (n >= 3) items[0].classList.add('stack2');
       }
-      if (progressEl) progressEl.textContent = n ? `noch ${n}` : '';
-      if (MODE === 'feeds' && n === 0 && initialCount > 0) {
+
+      if (progressEl)
+        progressEl.textContent = searching ? `${n} Treffer` : (n ? `noch ${n}` : '');
+
+      // Inbox-Zero nur feiern, wenn wirklich durchgearbeitet – NICHT wenn die
+      // Suche bloß zu eng gefiltert hat.
+      if (MODE === 'feeds' && n === 0 && initialCount > 0 && !searching) {
         doneEl.hidden = false;
         if (lastN > 0) celebrate();
+        lastN = n;
       } else {
         doneEl.hidden = true;
+        if (!searching) lastN = n;   // bei Suche lastN nicht verfälschen
       }
-      lastN = n;
     }
 
     function celebrate() {
