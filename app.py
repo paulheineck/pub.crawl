@@ -249,11 +249,12 @@ def init_db():
     cached_at TEXT
     );                  
     """)
-    # Nachrüsten falls ältere DB ohne 'snapshot'
-    try:
-        con.execute("ALTER TABLE starred ADD COLUMN snapshot TEXT")
-    except Exception:
-        pass
+    # Nachrüsten falls ältere DB ohne 'snapshot' / 'note'
+    for col in ("snapshot", "note"):
+        try:
+            con.execute(f"ALTER TABLE starred ADD COLUMN {col} TEXT")
+        except Exception:
+            pass
     con.commit()
     con.close()
 
@@ -279,6 +280,27 @@ def get_starred_ids():
     rows = con.execute("SELECT id FROM starred").fetchall()
     con.close()
     return {r["id"] for r in rows}
+
+def get_activity_stats():
+    """(streak, today) – Tage mit Aktivität in Folge + heute gesichtete Artikel.
+    'Gesichtet' = ausgeblendet (read) oder gestarnt. Alles in lokaler Zeit."""
+    con = db()
+    rows = con.execute(
+        "SELECT date(read_at,'localtime') d FROM read_items WHERE read_at IS NOT NULL "
+        "UNION SELECT date(starred_at,'localtime') d FROM starred WHERE starred_at IS NOT NULL"
+    ).fetchall()
+    today_count = con.execute(
+        "SELECT (SELECT COUNT(*) FROM read_items WHERE date(read_at,'localtime')=date('now','localtime')) + "
+        "(SELECT COUNT(*) FROM starred WHERE date(starred_at,'localtime')=date('now','localtime'))"
+    ).fetchone()[0]
+    con.close()
+    days = {r["d"] for r in rows if r["d"]}
+    streak = 0
+    d = dt.date.today()
+    while d.isoformat() in days:
+        streak += 1
+        d -= dt.timedelta(days=1)
+    return streak, int(today_count or 0)
 
 
 # ----------------------------- Feed Fetching (parallel + cache) --------------
@@ -343,8 +365,8 @@ def fetch_one_feed(feed_cfg, include_res, exclude_res, max_items):
                 "authors_full": authors_full,
                 "date": parse_date(e),
                 "date_rel": rel_datetime(parse_date(e)) if parse_date(e) else "",
-                "summary": summary_raw[:800] + ("…" if len(summary_raw)>800 else ""),
-                "summary_html": h_summary if (s_hit) else summary_raw[:800] + ("…" if len(summary_raw)>800 else ""),
+                "summary": summary_raw[:4000],
+                "summary_html": h_summary if (s_hit) else summary_raw[:4000],
                 "journal": name,
                 "doi": doi,
                 "stats": stats
@@ -400,7 +422,7 @@ def fetch_all_feeds(cfg):
 
 def get_starred_entries():
     con = db()
-    rows = con.execute("SELECT id, starred_at, snapshot FROM starred ORDER BY starred_at DESC").fetchall()
+    rows = con.execute("SELECT id, starred_at, snapshot, note FROM starred ORDER BY starred_at DESC").fetchall()
     con.close()
     entries = []
     for r in rows:
@@ -423,6 +445,7 @@ def get_starred_entries():
             "starred": True,
             "authors": snap.get("authors") or "",
             "authors_full": snap.get("authors_full") or snap.get("authors") or "",
+            "note": r["note"] or "",
             "stats": extract_stats(snap.get("summary") or "")
         })
     return entries
@@ -528,6 +551,9 @@ def extract_authors_from_feedentry(e):
 def index():
     cfg = load_cfg()
     mode = request.args.get("mode", "feeds")  # "feeds", "stars", "sources"
+    # Sortierung: 'new' (neueste zuerst) oder 'shuffle'; per Cookie gemerkt
+    sort = request.args.get("sort") or request.cookies.get("sort_pref") or "shuffle"
+    streak, today_count = get_activity_stats()
 
     if mode == "stars":
         entries = get_starred_entries()
@@ -576,7 +602,10 @@ def index():
                 seen_keys.add(key)
                 it["starred"] = False
                 flat.append(it)
-        random.shuffle(flat)
+        if sort == "new":
+            flat.sort(key=lambda it: it.get("date") or "", reverse=True)
+        else:
+            random.shuffle(flat)
         entries = flat
         list_title = ""
 
@@ -587,14 +616,16 @@ def index():
         entries=entries,
         list_title=list_title,
         mode=mode,
+        sort=sort,
+        streak=streak,
+        today_count=today_count,
         no_new=(len(entries) == 0),
         feed_errors=(feed_errors if mode == "feeds" else []),
         last_seen=last_seen
     ))
     resp.set_cookie("last_seen", dt.datetime.now(dt.timezone.utc).isoformat(), max_age=60*60*24*90)
+    resp.set_cookie("sort_pref", sort, max_age=60*60*24*365)
     return resp
-
-
 
 
 
@@ -662,6 +693,18 @@ def route_star():
         con.close()
 
     return jsonify({"ok": True, "starred": starred})
+
+@app.post("/star/note")
+def route_star_note():
+    iid = request.form.get("id", "")
+    note = (request.form.get("note") or "").strip()
+    if not iid:
+        abort(400)
+    con = db()
+    con.execute("UPDATE starred SET note=? WHERE id=?", (note, iid))
+    con.commit()
+    con.close()
+    return jsonify({"ok": True})
 
 
 @app.get("/stars")
@@ -885,6 +928,32 @@ def import_state():
         con.close()
     return redirect(url_for("index", mode="sources",
                             msg=f"Status importiert: +{s_added} Leseliste, +{r_added} Gelesen"))
+
+@app.get("/x/oa")
+def x_oa():
+    """Open-Access-PDF via Unpaywall (legal: nur frei verfügbare Kopien);
+    fällt sonst auf die DOI-Seite zurück."""
+    doi = (request.args.get("doi") or "").strip()
+    if not doi:
+        abort(400)
+    email = ((load_cfg().get("api") or {}).get("unpaywall_email") or "").strip()
+    if email:
+        try:
+            data = cache_get(f"oa:{doi}")
+            if data is None:
+                r = http_get(f"https://api.unpaywall.org/v2/{doi}?email={email}", timeout=8)
+                if r.ok:
+                    data = r.json()
+                    cache_put(f"oa:{doi}", data)
+            if data:
+                loc = data.get("best_oa_location") or {}
+                url = loc.get("url_for_pdf") or loc.get("url")
+                if url:
+                    return redirect(url, code=302)
+        except Exception:
+            pass
+    # Kein freies PDF gefunden → DOI-Seite (dort greift ggf. dein Uni-Zugang)
+    return redirect(f"https://doi.org/{doi}", code=302)
 
 @app.get("/dl/ris")
 def dl_ris():

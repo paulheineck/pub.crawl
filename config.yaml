@@ -33,3 +33,5 @@ filters:
 display:
   max_items_per_feed: 30
   show_abstract: true
+api:
+  unpaywall_email: paul.heineck@uni-wuerzburg.de

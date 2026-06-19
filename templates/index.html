@@ -164,14 +164,78 @@
 #help .help-card {
   background: var(--background-color); border: 1px solid var(--muted-border-color);
   border-radius: 14px; padding: 1.2rem 1.6rem; max-width: 360px;
+  color: var(--color);
 }
 #help kbd {
   display: inline-block; min-width: 1.4rem; text-align: center;
   padding: .1rem .4rem; border: 1px solid var(--muted-border-color);
-  border-radius: 6px; background: var(--muted-color-bg); font-size: .85rem;
+  border-radius: 6px; background: var(--muted-color-bg);
+  color: inherit; font-size: .85rem; font-family: inherit;
 }
 #help table { width: 100%; }
 #help td { padding: .3rem .4rem; }
+
+/* Header-Extras */
+.streak {
+  font-size: .85rem; padding: .15rem .6rem; border-radius: 999px; white-space: nowrap;
+  background: color-mix(in hsl, #ff9500 20%, var(--muted-color-bg));
+  border: 1px solid color-mix(in hsl, #ff9500 45%, transparent);
+}
+.hbtn {
+  font-size: .85rem; padding: .35rem .6rem; border-radius: 8px; white-space: nowrap;
+  border: 1px solid var(--muted-border-color); background: var(--muted-color-bg);
+  color: inherit; cursor: pointer; text-decoration: none; line-height: 1;
+}
+.hbtn:hover { border-color: var(--primary); }
+
+/* Abstract aufklappen */
+.abstract { margin: .2rem 0 .25rem 0; }
+.abstract.clamped {
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+.more-btn {
+  background: none; border: none; padding: 0; margin: 0 0 .5rem 0;
+  color: var(--primary); cursor: pointer; font-size: .85rem; text-decoration: underline;
+}
+
+/* Notiz in der Leseliste */
+textarea.note {
+  width: 100%; margin: .4rem 0 0 0; padding: .4rem .6rem;
+  font-size: .9rem; line-height: 1.35; resize: none; overflow: hidden;
+  border-radius: 8px; border: 1px solid var(--muted-border-color);
+  background: var(--muted-color-bg); color: inherit;
+}
+
+#progress { font-variant-numeric: tabular-nums; }
+
+/* Inbox-Zero */
+#done { text-align: center; padding: 2.5rem 1rem; color: var(--muted-color); }
+#done .done-emoji { font-size: 3.2rem; line-height: 1; animation: pop .5s ease; }
+@keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+/* Konfetti (kurz & dezent) */
+.confetti {
+  position: fixed; top: -12px; width: 8px; height: 14px; z-index: 45;
+  pointer-events: none; border-radius: 2px; animation: fall linear forwards;
+}
+@keyframes fall { to { transform: translateY(106vh) rotate(560deg); opacity: 1; } }
+
+/* Stapel-Modus */
+body.deck #list { position: relative; }
+body.deck .item { display: none; }
+body.deck .item.deck-top {
+  display: block; position: relative; max-width: 640px; margin: 1.2rem auto;
+  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+}
+body.deck .item.deck-top::before,
+body.deck .item.deck-top::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  border: 1px solid var(--muted-border-color); border-radius: 14px;
+  background: var(--muted-color-bg);
+}
+body.deck .item.deck-top.stack1::before { transform: translateY(8px)  scale(.975); }
+body.deck .item.deck-top.stack2::after  { transform: translateY(16px) scale(.95); }
+body.deck #progress { text-align: center; font-size: 1rem; margin-top: 1rem; }
 
   </style>
 </head>
@@ -180,7 +244,9 @@
     <header>
       <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
         <h1>Readr</h1>
-        <span class="meta">({{ now }})</span>
+        {% if streak and streak > 0 %}
+          <span class="streak" title="{{ streak }} Tag(e) in Folge aktiv · heute {{ today_count }} gesichtet">🔥 {{ streak }} · heute {{ today_count }}</span>
+        {% endif %}
         <nav>
           <a href="/?mode=feeds"   class="{{ 'contrast' if mode=='feeds'   else '' }}">Feed</a>
           <a href="/?mode=stars"   class="{{ 'contrast' if mode=='stars'   else '' }}">⭐ Leseliste</a>
@@ -189,6 +255,11 @@
       </div>
       <div class="rightside">
         <input id="q" name="q" placeholder="Suche in Titel & Abstract" aria-label="Suche">
+        {% if mode == 'feeds' %}
+          <a id="sortBtn" class="hbtn" href="/?mode=feeds&sort={{ 'shuffle' if sort=='new' else 'new' }}"
+             title="Sortierung umschalten">{{ '🆕 Neueste' if sort=='new' else '🔀 Zufall' }}</a>
+          <button id="viewBtn" class="hbtn" type="button" title="Liste/Stapel umschalten">🃏 Stapel</button>
+        {% endif %}
         <button id="themeBtn" title="Theme umschalten">🌓</button>
       </div>
     </header>
@@ -210,6 +281,15 @@
       <a href="/export/starred.ris" class="secondary outline">⬇️ Exportieren</a>
     {% endif %}
 
+    {% if mode == 'feeds' %}
+      <div id="progress" class="meta" style="margin:.2rem 0 .6rem 0;"></div>
+    {% endif %}
+
+    <div id="done" hidden>
+      <div class="done-emoji">🎉</div>
+      <p>Alles durch! Keine neuen Artikel mehr.</p>
+    </div>
+
     <section id="list">
       {% for it in entries %}
       <div class="item" data-search="{{ (it.title ~ ' ' ~ it.summary)|lower }}">
@@ -223,6 +303,10 @@
           {{ it.journal }} · {{ it.date if it.date else '' }}
           {% if it.date_rel %} ({{ it.date_rel }}){% endif %}
           {% if it.doi %}
+            <a class="meta-link" href="/x/oa?doi={{ it.doi }}" target="_blank" rel="noopener" title="Frei verfügbares PDF suchen (Unpaywall)">📄 PDF</a>
+          {% endif %}
+          <a class="meta-link" href="https://scholar.google.com/scholar?q={{ it.title|urlencode }}" target="_blank" rel="noopener" title="Auf Google Scholar suchen">🎓 Scholar</a>
+          {% if it.doi %}
             <a class="meta-link" href="/dl/ris?doi={{ it.doi }}&title={{ it.title|urlencode }}">Cite (RIS)</a>
           {% endif %}
           {% if mode == 'stars' %}
@@ -231,7 +315,13 @@
         </p>
 
         {% if it.summary %}
-          <p style="margin:.2rem 0 .6rem 0;">{{ it.summary_html|safe }}</p>
+          <div class="abstract clamped">{{ it.summary_html|safe }}</div>
+          <button class="more-btn" type="button" hidden>mehr ▾</button>
+        {% endif %}
+
+        {% if mode == 'stars' %}
+          <textarea class="note" data-id="{{ it.id }}" rows="1"
+            placeholder="📝 Notiz / #tags …">{{ it.note }}</textarea>
         {% endif %}
         <div class="chips">
           {% if it.stats.N %}<span class="chip">N={{ it.stats.N }}</span>{% endif %}
@@ -298,6 +388,7 @@
       document.querySelectorAll('.item').forEach(it =>
         it.classList.toggle('hidden', term && !it.dataset.search.includes(term))
       );
+      updateView();
     });
 
     // Theme
@@ -321,14 +412,16 @@
         card.style.transition = 'transform .3s, opacity .3s';
         card.style.transform = `translateX(${dx}px) rotate(${dx < 0 ? -3 : 3}deg)`;
         card.style.opacity = '0';
-        setTimeout(() => card.classList.add('gone'), 280);
+        setTimeout(() => { card.classList.add('gone'); updateView(); }, 280);
       } else {
         card.classList.add('gone');
+        updateView();
       }
     }
     function restoreCard(card) {
       card.classList.remove('gone');
       card.style.transition = card.style.transform = card.style.opacity = '';
+      updateView();
     }
 
     // Undo-Toast (immer nur einer aktiv)
@@ -431,6 +524,95 @@
     document.getElementById('help').addEventListener('click', (e) => {
       if (e.target.id === 'help') e.target.classList.remove('show');
     });
+
+    // ---- Fortschritt · Stapel-Modus · Inbox-Zero ----
+    const body = document.body;
+    const progressEl = document.getElementById('progress');
+    const doneEl = document.getElementById('done');
+    const viewBtn = document.getElementById('viewBtn');
+    const initialCount = visibleItems().length;
+    let lastN = initialCount;
+
+    function updateView() {
+      const items = visibleItems();
+      const n = items.length;
+      if (body.classList.contains('deck')) {
+        items.forEach((el, i) => {
+          el.classList.toggle('deck-top', i === 0);
+          el.classList.toggle('stack1', i === 0 && n >= 2);
+          el.classList.toggle('stack2', i === 0 && n >= 3);
+        });
+      } else {
+        document.querySelectorAll('.deck-top').forEach(el =>
+          el.classList.remove('deck-top', 'stack1', 'stack2'));
+      }
+      if (progressEl) progressEl.textContent = n ? `noch ${n}` : '';
+      if (MODE === 'feeds' && n === 0 && initialCount > 0) {
+        doneEl.hidden = false;
+        if (lastN > 0) celebrate();
+      } else {
+        doneEl.hidden = true;
+      }
+      lastN = n;
+    }
+
+    function celebrate() {
+      if (localStorage.getItem('animateCards') === '0') return;
+      const colors = ['#ff9500', '#34c759', '#007aff', '#ff2d55', '#af52de'];
+      for (let i = 0; i < 28; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = (Math.random() * 100) + 'vw';
+        c.style.background = colors[i % colors.length];
+        c.style.animationDuration = (1 + Math.random()) + 's';
+        c.style.animationDelay = (Math.random() * 0.3) + 's';
+        body.appendChild(c);
+        setTimeout(() => c.remove(), 2600);
+      }
+    }
+
+    // Liste ⇄ Stapel (nur im Feed)
+    function applyView() {
+      const deck = (MODE === 'feeds') && localStorage.getItem('viewMode') === 'deck';
+      body.classList.toggle('deck', deck);
+      if (viewBtn) viewBtn.textContent = deck ? '📄 Liste' : '🃏 Stapel';
+      updateView();
+    }
+    if (viewBtn) viewBtn.addEventListener('click', () => {
+      localStorage.setItem('viewMode', body.classList.contains('deck') ? 'list' : 'deck');
+      applyView();
+    });
+
+    // Abstract auf-/zuklappen (Button nur zeigen, wenn wirklich abgeschnitten)
+    document.querySelectorAll('.abstract.clamped').forEach(ab => {
+      const btn = ab.nextElementSibling;
+      if (!btn || !btn.classList.contains('more-btn')) return;
+      if (ab.scrollHeight > ab.clientHeight + 4) {
+        btn.hidden = false;
+        btn.addEventListener('click', () => {
+          const clamped = ab.classList.toggle('clamped');
+          btn.textContent = clamped ? 'mehr ▾' : 'weniger ▴';
+        });
+      }
+    });
+
+    // Notizen in der Leseliste: mitwachsen + automatisch speichern
+    document.querySelectorAll('textarea.note').forEach(ta => {
+      const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+      grow();
+      let t = null;
+      ta.addEventListener('input', () => {
+        grow();
+        clearTimeout(t);
+        t = setTimeout(() => post('/star/note', { id: ta.dataset.id, note: ta.value }), 600);
+      });
+      ta.addEventListener('blur', () => {
+        clearTimeout(t);
+        post('/star/note', { id: ta.dataset.id, note: ta.value });
+      });
+    });
+
+    applyView();
   </script>
 </body>
 </html>
