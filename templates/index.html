@@ -37,12 +37,6 @@
     header .rightside { display: flex; gap: .5rem; flex: 1; justify-content: flex-end; }
     #q { flex: 1; min-width: 220px; max-width: 340px; }
 
-    #themeBtn {
-      width: 2.4rem; aspect-ratio: 1;
-      text-align: center; font-size: 1.1rem;
-      padding: .35rem; line-height: 1;
-    }
-
     .meta { color: var(--muted-color); font-size: .92rem; }
     .meta a.meta-link { margin-left:.5rem; font-size:.85rem; text-decoration: underline; }
 
@@ -182,11 +176,15 @@
   border: 1px solid color-mix(in hsl, #ff9500 45%, transparent);
 }
 .hbtn {
-  font-size: .85rem; padding: .35rem .6rem; border-radius: 8px; white-space: nowrap;
-  border: 1px solid var(--muted-border-color); background: var(--muted-color-bg);
-  color: inherit; cursor: pointer; text-decoration: none; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+  height: 2.4rem; padding: 0 .7rem; box-sizing: border-box;
+  font-size: .85rem; line-height: 1; white-space: nowrap;
+  border-radius: 8px; border: 1px solid var(--muted-border-color);
+  background: var(--muted-color-bg); color: inherit;
+  cursor: pointer; text-decoration: none;
 }
 .hbtn:hover { border-color: var(--primary); }
+.hbtn.icon { width: 2.4rem; padding: 0; font-size: 1.1rem; }
 
 /* Abstract aufklappen */
 .abstract { margin: .2rem 0 .25rem 0; }
@@ -220,30 +218,27 @@ textarea.note {
 }
 @keyframes fall { to { transform: translateY(106vh) rotate(560deg); opacity: 1; } }
 
-/* Stapel-Modus */
-body.deck #list { position: relative; }
-body.deck .item { display: none; }
-body.deck .item.deck-top {
-  display: block; position: relative; max-width: 640px; margin: 1.2rem auto;
-  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+/* Stapel-Modus: echter Kartenstapel */
+body.deck #progress { text-align: center; font-size: 1rem; margin: 0 0 .6rem 0; }
+body.deck #list { position: relative; min-height: 62vh; }
+body.deck #list.empty { min-height: 0; }
+body.deck .item {
+  position: absolute; top: 0; left: 50%; width: min(640px, 94%);
+  transform: translateX(-50%);
+  transition: transform .28s ease, opacity .28s ease, box-shadow .28s ease;
 }
-body.deck .item.deck-top::before,
-body.deck .item.deck-top::after {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  border: 1px solid var(--muted-border-color); border-radius: 14px;
-  background: var(--muted-color-bg);
-}
-body.deck .item.deck-top.stack1::before { transform: translateY(8px)  scale(.975); }
-body.deck .item.deck-top.stack2::after  { transform: translateY(16px) scale(.95); }
-/* Suche/Erledigt schlägt deck-top (Geisterkarten verhindern) */
+/* nur die obersten 5 Karten sichtbar; Rest/gefiltert/erledigt aus */
+body.deck .item:not(.d0):not(.d1):not(.d2):not(.d3):not(.d4),
 body.deck .item.hidden, body.deck .item.gone { display: none; }
-body.deck #progress { text-align: center; font-size: 1rem; margin-top: 1rem; }
-
-/* Während Suche im Stapelmodus: zurück zur Listendarstellung (alle Treffer) */
-body.deck.searching .item { display: block; max-width: none; margin: 0; box-shadow: none; }
-body.deck.searching .item + .item { margin-top: .8rem; }
-body.deck.searching .item.hidden, body.deck.searching .item.gone { display: none; }
-body.deck.searching #progress { text-align: left; font-size: inherit; margin-top: .2rem; }
+/* gestaffelte Tiefe – wirkt dicker, je mehr dahinter liegt */
+body.deck .item.d0 { z-index: 50; transform: translateX(-50%) translateY(0)   scale(1);   box-shadow: 0 16px 36px rgba(0,0,0,.22); }
+body.deck .item.d1 { z-index: 49; transform: translateX(-50%) translateY(14px) scale(.972); opacity: .97; }
+body.deck .item.d2 { z-index: 48; transform: translateX(-50%) translateY(28px) scale(.944); opacity: .93; }
+body.deck .item.d3 { z-index: 47; transform: translateX(-50%) translateY(42px) scale(.916); opacity: .88; }
+body.deck .item.d4 { z-index: 46; transform: translateX(-50%) translateY(56px) scale(.888); opacity: .82; }
+body.deck .item:not(.d0) { pointer-events: none; }   /* nur oberste interaktiv */
+/* sanfter Wechsel Liste↔Stapel */
+#list { transition: opacity .12s ease; }
 
   </style>
 </head>
@@ -268,7 +263,7 @@ body.deck.searching #progress { text-align: left; font-size: inherit; margin-top
              title="Sortierung umschalten">{{ '🆕 Neueste' if sort=='new' else '🔀 Zufall' }}</a>
           <button id="viewBtn" class="hbtn" type="button" title="Liste/Stapel umschalten">🃏 Stapel</button>
         {% endif %}
-        <button id="themeBtn" title="Theme umschalten">🌓</button>
+        <button id="themeBtn" class="hbtn icon" title="Theme umschalten">🌓</button>
       </div>
     </header>
 
@@ -416,11 +411,17 @@ body.deck.searching #progress { text-align: left; font-size: inherit; margin-top
     // Karte ausblenden (mit optionaler Animation) bzw. wiederherstellen
     function hideCard(card, dx) {
       const animate = localStorage.getItem('animateCards') !== '0';
+      const deck = document.body.classList.contains('deck');
       if (animate) {
-        card.style.transition = 'transform .3s, opacity .3s';
-        card.style.transform = `translateX(${dx}px) rotate(${dx < 0 ? -3 : 3}deg)`;
+        // im Stapel zentriert weiter rausfliegen; danach rückt die nächste nach
+        const base = deck ? 'translateX(-50%) ' : '';
+        const fly = deck ? dx * 6 : dx;
+        const rot = dx < 0 ? -8 : 8;
+        card.style.transition = 'transform .3s ease, opacity .3s ease';
+        card.style.transform = `${base}translateX(${fly}px) rotate(${rot}deg)`;
         card.style.opacity = '0';
-        setTimeout(() => { card.classList.add('gone'); updateView(); }, 280);
+        card.style.zIndex = '60';
+        setTimeout(() => { card.classList.add('gone'); card.style.zIndex = ''; updateView(); }, 280);
       } else {
         card.classList.add('gone');
         updateView();
@@ -428,7 +429,7 @@ body.deck.searching #progress { text-align: left; font-size: inherit; margin-top
     }
     function restoreCard(card) {
       card.classList.remove('gone');
-      card.style.transition = card.style.transform = card.style.opacity = '';
+      card.style.transition = card.style.transform = card.style.opacity = card.style.zIndex = '';
       updateView();
     }
 
@@ -515,12 +516,14 @@ body.deck.searching #progress { text-align: left; font-size: inherit; margin-top
 
       const items = visibleItems();
       if (!items.length) return;
-      const cur = currentItem();
+      const deck = document.body.classList.contains('deck');
+      // im Stapel immer die oberste Karte; in der Liste die aktive/erste
+      const cur = deck ? items[0] : currentItem();
       const idx = items.indexOf(cur);
 
       switch (e.key) {
-        case 'j': setCurrent(items[Math.min(idx + 1, items.length - 1)]); break;
-        case 'k': setCurrent(items[Math.max(idx - 1, 0)]); break;
+        case 'j': if (!deck) setCurrent(items[Math.min(idx + 1, items.length - 1)]); break;
+        case 'k': if (!deck) setCurrent(items[Math.max(idx - 1, 0)]); break;
         case 'l': cur && cur.querySelector('.choice.like')?.click(); break;
         case 'd': cur && (cur.querySelector('.choice.skip') || cur.querySelector('.read-btn'))?.click(); break;
         default: return;
@@ -535,31 +538,27 @@ body.deck.searching #progress { text-align: left; font-size: inherit; margin-top
 
     // ---- Fortschritt · Stapel-Modus · Inbox-Zero ----
     const body = document.body;
+    const listEl = document.getElementById('list');
     const progressEl = document.getElementById('progress');
     const doneEl = document.getElementById('done');
     const viewBtn = document.getElementById('viewBtn');
     const initialCount = visibleItems().length;
+    const DEPTH = 5;                 // so viele Karten zeigt der Stapel maximal
     let lastN = initialCount;
 
     function updateView() {
       const items = visibleItems();   // ohne .hidden (Suche) und .gone (erledigt)
       const n = items.length;
       const searching = q.value.trim() !== '';
+      const deck = body.classList.contains('deck');
 
-      // Während einer Suche im Stapelmodus vorübergehend als Liste zeigen,
-      // damit man ALLE Treffer sieht (sonst nur den obersten).
-      body.classList.toggle('searching', searching);
-
-      // deck-top IMMER erst überall entfernen, dann nur auf die oberste
-      // *sichtbare* Karte setzen – sonst bliebe eine weggefilterte Karte als
-      // "Geisterkarte" stehen.
-      document.querySelectorAll('.item.deck-top').forEach(el =>
-        el.classList.remove('deck-top', 'stack1', 'stack2'));
-      if (body.classList.contains('deck') && !searching && items[0]) {
-        items[0].classList.add('deck-top');
-        if (n >= 2) items[0].classList.add('stack1');
-        if (n >= 3) items[0].classList.add('stack2');
+      // Tiefen-Klassen neu vergeben: oberste 5 sichtbare Karten = d0..d4
+      document.querySelectorAll('.item.d0,.item.d1,.item.d2,.item.d3,.item.d4')
+        .forEach(el => el.classList.remove('d0', 'd1', 'd2', 'd3', 'd4'));
+      if (deck) {
+        items.slice(0, DEPTH).forEach((el, i) => el.classList.add('d' + i));
       }
+      if (listEl) listEl.classList.toggle('empty', n === 0);
 
       if (progressEl)
         progressEl.textContent = searching ? `${n} Treffer` : (n ? `noch ${n}` : '');
@@ -592,15 +591,24 @@ body.deck.searching #progress { text-align: left; font-size: inherit; margin-top
     }
 
     // Liste ⇄ Stapel (nur im Feed)
-    function applyView() {
+    function applyView(animateSwitch) {
       const deck = (MODE === 'feeds') && localStorage.getItem('viewMode') === 'deck';
-      body.classList.toggle('deck', deck);
-      if (viewBtn) viewBtn.textContent = deck ? '📄 Liste' : '🃏 Stapel';
-      updateView();
+      const doIt = () => {
+        body.classList.toggle('deck', deck);
+        if (viewBtn) viewBtn.textContent = deck ? '📄 Liste' : '🃏 Stapel';
+        updateView();
+      };
+      if (animateSwitch && listEl) {
+        // kurz ausblenden, umschalten, nach oben, wieder einblenden → kein Springen
+        listEl.style.opacity = '0';
+        setTimeout(() => { window.scrollTo({ top: 0 }); doIt(); listEl.style.opacity = '1'; }, 120);
+      } else {
+        doIt();
+      }
     }
     if (viewBtn) viewBtn.addEventListener('click', () => {
       localStorage.setItem('viewMode', body.classList.contains('deck') ? 'list' : 'deck');
-      applyView();
+      applyView(true);
     });
 
     // Abstract auf-/zuklappen (Button nur zeigen, wenn wirklich abgeschnitten)
