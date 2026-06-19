@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Readr</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
+
+  <script>
+    // Theme früh setzen (vermeidet Flackern)
+    (function(){
+      try {
+        const saved = localStorage.getItem("theme");
+        if (saved) document.documentElement.dataset.theme = saved;
+      } catch(e){}
+    })();
+  </script>
+
+  <style>
+    main.container { max-width: 1080px; }
+    header {
+      position: sticky; top: 0; z-index: 3;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+      gap: .6rem; padding: .65rem 0 .75rem 0;
+      backdrop-filter: blur(2px);
+      background: linear-gradient(to bottom,
+        color-mix(in hsl, var(--background-color) 94%, transparent) 88%, transparent 100%);
+      border-bottom: 1px solid var(--muted-border-color);
+    }
+    .authors {
+      margin: .1rem 0 .25rem 0;
+      font-size: .95rem;
+      color: var(--muted-color);
+    }
+    header h1 { margin: 0; font-size: 1.2rem; }
+    header nav { display: flex; gap: .4rem; align-items: center; }
+    header .rightside { display: flex; gap: .5rem; flex: 1; justify-content: flex-end; }
+    #q { flex: 1; min-width: 220px; max-width: 340px; }
+
+    #themeBtn {
+      width: 2.4rem; aspect-ratio: 1;
+      text-align: center; font-size: 1.1rem;
+      padding: .35rem; line-height: 1;
+    }
+
+    .meta { color: var(--muted-color); font-size: .92rem; }
+    .meta a.meta-link { margin-left:.5rem; font-size:.85rem; text-decoration: underline; }
+
+    .item {
+      border: 1px solid var(--muted-border-color);
+      border-radius: 14px;
+      padding: 1rem;
+      background: var(--muted-color-bg);
+      transition: transform .06s ease, background .2s ease, box-shadow .2s ease;
+    }
+    .item + .item { margin-top: .8rem; }
+    .item.hidden { display: none; }
+    .item.active { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    .chips { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+    .chip {
+      border: 1px solid var(--muted-border-color);
+      border-radius: 999px;
+      padding: .15rem .6rem;
+      font-size: .85rem;
+      background: color-mix(in hsl, var(--muted-color-bg) 85%, transparent);
+      white-space: nowrap;
+    }
+
+    /* Choice-Bar (Feed-Modus) */
+    .choicebar {
+      display:flex;
+      justify-content:center;
+      gap:1.1rem;
+      margin-top:.7rem;
+    }
+    .choice {
+      width:3.2rem; height:3.2rem;
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius:999px;
+      border:2px solid rgba(255,255,255,0.35);
+      background: color-mix(in hsl, var(--muted-color-bg) 80%, transparent);
+      box-shadow: 0 2px 10px rgba(0,0,0,.15);
+      cursor:pointer;
+      transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
+    }
+    [data-theme="light"] .choice { border-color: rgba(0,0,0,0.25); }
+    .choice:hover { transform: scale(1.08); box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+    .choice:active { transform: scale(0.95); }
+
+    .choice.like {
+      color: var(--primary);
+      background: color-mix(in hsl, var(--primary) 20%, var(--muted-color-bg));
+      border-color: color-mix(in hsl, var(--primary) 65%, #000);
+    }
+    .choice.like:hover {
+      background: color-mix(in hsl, var(--primary) 35%, var(--muted-color-bg));
+      border-color: color-mix(in hsl, var(--primary) 85%, #000);
+    }
+
+    .choice.skip {
+      color: #d33;
+      background: color-mix(in hsl, #d33 18%, var(--muted-color-bg));
+      border-color: color-mix(in hsl, #d33 65%, #000);
+    }
+    .choice.skip:hover {
+      background: color-mix(in hsl, #d33 28%, var(--muted-color-bg));
+      border-color: color-mix(in hsl, #d33 85%, #000);
+    }
+
+    .choice svg { width:30px; height:30px; display:block; }
+
+    /* Gelesen-Button (Leseliste) */
+.read-btn {
+  background: none;
+  border: none;
+  color: var(--muted-color);
+  font-size: 0.85rem;
+  margin-left: 0.4rem;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1.2;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.read-btn:hover {
+  color: var(--primary);
+  text-decoration-color: var(--primary);
+}
+
+.read-btn:disabled {
+  color: var(--muted-color);
+  opacity: 0.6;
+  text-decoration: none;
+  cursor: default;
+}
+
+/* Undo-Toast */
+#toast {
+  position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%) translateY(2rem);
+  display: flex; align-items: center; gap: 1rem;
+  padding: .6rem 1rem; border-radius: 12px;
+  background: var(--contrast, #222); color: var(--contrast-inverse, #fff);
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  opacity: 0; pointer-events: none; z-index: 50;
+  transition: opacity .2s ease, transform .2s ease;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+#toast .toast-undo {
+  background: none; border: none; padding: 0; margin: 0;
+  color: inherit; font-weight: 600; text-decoration: underline; cursor: pointer;
+}
+
+/* Hilfe-Overlay */
+#help {
+  position: fixed; inset: 0; z-index: 60;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.45);
+}
+#help.show { display: flex; }
+#help .help-card {
+  background: var(--background-color); border: 1px solid var(--muted-border-color);
+  border-radius: 14px; padding: 1.2rem 1.6rem; max-width: 360px;
+}
+#help kbd {
+  display: inline-block; min-width: 1.4rem; text-align: center;
+  padding: .1rem .4rem; border: 1px solid var(--muted-border-color);
+  border-radius: 6px; background: var(--muted-color-bg); font-size: .85rem;
+}
+#help table { width: 100%; }
+#help td { padding: .3rem .4rem; }
+
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <h1>Readr</h1>
+        <span class="meta">({{ now }})</span>
+        <nav>
+          <a href="/?mode=feeds"   class="{{ 'contrast' if mode=='feeds'   else '' }}">Feed</a>
+          <a href="/?mode=stars"   class="{{ 'contrast' if mode=='stars'   else '' }}">⭐ Leseliste</a>
+          <a href="/?mode=sources" class="{{ 'contrast' if mode=='sources' else '' }}">⚙ Einstellungen</a>
+        </nav>
+      </div>
+      <div class="rightside">
+        <input id="q" name="q" placeholder="Suche in Titel & Abstract" aria-label="Suche">
+        <button id="themeBtn" title="Theme umschalten">🌓</button>
+      </div>
+    </header>
+
+    {% if no_new %}
+      <article class="error" style="padding:.75rem; margin-top:.8rem;">Es sind keine neuen Artikel verfügbar</article>
+    {% endif %}
+
+    {% if feed_errors %}
+      <article style="border-left:3px solid #d33;padding:.5rem .8rem;margin-top:.8rem;font-size:.9rem;">
+        ⚠ {{ feed_errors|length }} Feed(s) nicht erreichbar
+        (<a href="/?mode=sources">Details</a>):
+        {{ feed_errors|map(attribute='name')|join(', ') }}
+      </article>
+    {% endif %}
+
+    <h3 style="margin:1rem 0 .6rem 0;">{{ list_title }}</h3>
+    {% if mode == 'stars' %}
+      <a href="/export/starred.ris" class="secondary outline">⬇️ Exportieren</a>
+    {% endif %}
+
+    <section id="list">
+      {% for it in entries %}
+      <div class="item" data-search="{{ (it.title ~ ' ' ~ it.summary)|lower }}">
+        <h4 style="margin:0 0 .25rem 0;">
+          <a href="{{ it.link }}" target="_blank" rel="noopener">{{ it.title_html|safe }}</a>
+        </h4>
+        {% if it.authors %}
+  <p class="authors" title="{{ it.authors_full }}">{{ it.authors }}</p>
+{% endif %}
+        <p class="meta" style="margin:.1rem 0 .6rem 0;">
+          {{ it.journal }} · {{ it.date if it.date else '' }}
+          {% if it.date_rel %} ({{ it.date_rel }}){% endif %}
+          {% if it.doi %}
+            <a class="meta-link" href="/dl/ris?doi={{ it.doi }}&title={{ it.title|urlencode }}">Cite (RIS)</a>
+          {% endif %}
+          {% if mode == 'stars' %}
+            <button class="secondary outline read-btn" data-read="{{ it.id }}">✅ Gelesen</button>
+          {% endif %}
+        </p>
+
+        {% if it.summary %}
+          <p style="margin:.2rem 0 .6rem 0;">{{ it.summary_html|safe }}</p>
+        {% endif %}
+        <div class="chips">
+          {% if it.stats.N %}<span class="chip">N={{ it.stats.N }}</span>{% endif %}
+          {% if it.stats.meta %}<span class="chip">Meta-Analysis</span>{% endif %}
+          {% if it.stats.prereg %}<span class="chip">Preregistered/RR</span>{% endif %}
+        </div>
+
+        {% if mode == 'feeds' %}
+        <div class="choicebar">
+          <button class="choice like"
+            data-id="{{ it.id }}"
+            data-title="{{ it.title }}"
+            data-link="{{ it.link }}"
+            data-feed="{{ it.journal }}"
+            data-date="{{ it.date }}"
+            data-summary="{{ it.summary }}"
+            data-doi="{{ it.doi or '' }}"
+            data-authors="{{ it.authors or '' }}"
+            data-authors_full="{{ it.authors_full or '' }}"
+            title="Auf Leseliste (L)">
+            <svg viewBox="0 0 24 24"><path fill="currentColor"
+              d="M12.1 21.35l-1.1-1.01C5.14 15.24 2 12.39 2 8.98 2 6.24 4.24 4 6.98 4c1.64 0 3.22.76 4.22 2 .99-1.24 2.58-2 4.22-2C18.76 4 21 6.24 21 8.98c0 3.41-3.14 6.26-8.9 11.36l-1 .91z"/></svg>
+          </button>
+          <button class="choice skip" data-read="{{ it.id }}" title="Ausblenden (D)">
+            <svg viewBox="0 0 24 24"><path fill="currentColor"
+              d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.42L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/></svg>
+          </button>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+  </main>
+
+  <!-- Undo-Toast -->
+  <div id="toast" role="status" aria-live="polite">
+    <span class="toast-msg"></span>
+    <button class="toast-undo" type="button">Rückgängig</button>
+  </div>
+
+  <!-- Tastatur-Hilfe (Taste ?) -->
+  <div id="help" role="dialog" aria-label="Tastenkürzel">
+    <div class="help-card">
+      <h4 style="margin-top:0;">Tastenkürzel</h4>
+      <table>
+        <tr><td><kbd>l</kbd></td><td>Auf Leseliste</td></tr>
+        <tr><td><kbd>d</kbd></td><td>Ausblenden / Gelesen</td></tr>
+        <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>nächste / vorige Karte</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Suche fokussieren</td></tr>
+        <tr><td><kbd>?</kbd></td><td>diese Hilfe</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>schließen</td></tr>
+      </table>
+      <p class="meta" style="margin:.6rem 0 0 0;">Klick außerhalb oder <kbd>Esc</kbd> zum Schließen.</p>
+    </div>
+  </div>
+
+  <script>
+    const MODE = "{{ mode }}";
+
+    // Suche
+    const q = document.getElementById('q');
+    q.addEventListener('input', () => {
+      const term = q.value.trim().toLowerCase();
+      document.querySelectorAll('.item').forEach(it =>
+        it.classList.toggle('hidden', term && !it.dataset.search.includes(term))
+      );
+    });
+
+    // Theme
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      const cur = document.documentElement.dataset.theme;
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('theme', next);
+    });
+
+    const post = (url, data) => fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams(data)
+    });
+
+    // Karte ausblenden (mit optionaler Animation) bzw. wiederherstellen
+    function hideCard(card, dx) {
+      const animate = localStorage.getItem('animateCards') !== '0';
+      if (animate) {
+        card.style.transition = 'transform .3s, opacity .3s';
+        card.style.transform = `translateX(${dx}px) rotate(${dx < 0 ? -3 : 3}deg)`;
+        card.style.opacity = '0';
+        setTimeout(() => card.classList.add('gone'), 280);
+      } else {
+        card.classList.add('gone');
+      }
+    }
+    function restoreCard(card) {
+      card.classList.remove('gone');
+      card.style.transition = card.style.transform = card.style.opacity = '';
+    }
+
+    // Undo-Toast (immer nur einer aktiv)
+    let toastTimer = null;
+    const toast = document.getElementById('toast');
+    function showToast(msg, undoFn) {
+      clearTimeout(toastTimer);
+      toast.querySelector('.toast-msg').textContent = msg;
+      toast.classList.add('show');
+      toast.querySelector('.toast-undo').onclick = () => {
+        clearTimeout(toastTimer);
+        toast.classList.remove('show');
+        undoFn();
+      };
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
+    }
+
+    async function likeCard(btn) {
+      const card = btn.closest('.item');
+      const data = {
+        id: btn.dataset.id, action: 'toggle',
+        title: btn.dataset.title, link: btn.dataset.link, feed: btn.dataset.feed,
+        date: btn.dataset.date, summary: btn.dataset.summary, doi: btn.dataset.doi,
+        authors: btn.dataset.authors || '', authors_full: btn.dataset.authors_full || ''
+      };
+      const res = await post('/star', data);
+      if (!res.ok) return;
+      hideCard(card, -70);
+      showToast('⭐ Auf Leseliste', async () => {
+        await post('/star', {...data, action: 'off'});
+        restoreCard(card);
+      });
+    }
+
+    async function skipCard(btn) {
+      const id = btn.dataset.read;
+      const card = btn.closest('.item');
+      const res = await post('/mark_read', { id });
+      if (!res.ok) return;
+      hideCard(card, 70);
+      showToast('✕ Ausgeblendet', async () => {
+        await post('/unread', { id });
+        restoreCard(card);
+      });
+    }
+
+    if (MODE === 'feeds') {
+      document.querySelectorAll('.choice.like').forEach(btn =>
+        btn.addEventListener('click', () => likeCard(btn)));
+      document.querySelectorAll('.choice.skip').forEach(btn =>
+        btn.addEventListener('click', () => skipCard(btn)));
+    }
+    if (MODE === 'stars') {
+      // In der Leseliste = "Gelesen" → wie Skip (mit Undo)
+      document.querySelectorAll('.read-btn').forEach(btn =>
+        btn.addEventListener('click', () => skipCard(btn)));
+    }
+
+    // Keyboard-Shortcuts:  l = Like · d = Skip/Gelesen · j/k = runter/hoch · / = Suche · ? = Hilfe
+    const visibleItems = () =>
+      Array.from(document.querySelectorAll('.item'))
+           .filter(el => !el.classList.contains('hidden') && !el.classList.contains('gone'));
+
+    function setCurrent(el) {
+      document.querySelectorAll('.item.active').forEach(i => i.classList.remove('active'));
+      if (el) {
+        el.classList.add('active');
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+    const currentItem = () => document.querySelector('.item.active') || visibleItems()[0];
+
+    document.addEventListener('keydown', (e) => {
+      // In Eingabefeldern keine Shortcuts (außer Esc zum Verlassen der Suche)
+      const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+      if (e.key === '/' && !typing) { e.preventDefault(); q.focus(); return; }
+      if (typing) { if (e.key === 'Escape') document.activeElement.blur(); return; }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const help = document.getElementById('help');
+      if (e.key === '?') { help.classList.toggle('show'); e.preventDefault(); return; }
+      if (e.key === 'Escape') { help.classList.remove('show'); return; }
+
+      const items = visibleItems();
+      if (!items.length) return;
+      const cur = currentItem();
+      const idx = items.indexOf(cur);
+
+      switch (e.key) {
+        case 'j': setCurrent(items[Math.min(idx + 1, items.length - 1)]); break;
+        case 'k': setCurrent(items[Math.max(idx - 1, 0)]); break;
+        case 'l': cur && cur.querySelector('.choice.like')?.click(); break;
+        case 'd': cur && (cur.querySelector('.choice.skip') || cur.querySelector('.read-btn'))?.click(); break;
+        default: return;
+      }
+      e.preventDefault();
+    });
+
+    // Hilfe-Overlay per Klick auf den Hintergrund schließen
+    document.getElementById('help').addEventListener('click', (e) => {
+      if (e.target.id === 'help') e.target.classList.remove('show');
+    });
+  </script>
+</body>
+</html>

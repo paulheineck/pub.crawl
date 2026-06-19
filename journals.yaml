@@ -1,0 +1,82 @@
+# Kuratierter Journal-Katalog für die Schnellauswahl in den Einstellungen.
+# Format: - name / url / category
+# Einfach erweitern – neue Einträge erscheinen automatisch im Katalog.
+# Tipp: Eine nicht erreichbare URL taucht nach dem Hinzufügen oben als
+# "⚠ Feed nicht erreichbar" auf und kann dann wieder entfernt werden.
+
+# --- Sozial- & Persönlichkeitspsychologie ---
+- name: JPSP
+  url: https://content.apa.org/journals/psp.rss
+  category: Sozial- & Persönlichkeitspsychologie
+- name: PSPB
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psp
+  category: Sozial- & Persönlichkeitspsychologie
+- name: PSPR
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psr
+  category: Sozial- & Persönlichkeitspsychologie
+- name: SPPS
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spp
+  category: Sozial- & Persönlichkeitspsychologie
+- name: GPIR
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=gpi
+  category: Sozial- & Persönlichkeitspsychologie
+- name: JESP
+  url: https://rss.sciencedirect.com/publication/science/00221031
+  category: Sozial- & Persönlichkeitspsychologie
+- name: EJSP
+  url: https://onlinelibrary.wiley.com/feed/10990992/most-recent
+  category: Sozial- & Persönlichkeitspsychologie
+- name: BJSP
+  url: https://onlinelibrary.wiley.com/feed/20448309/most-recent
+  category: Sozial- & Persönlichkeitspsychologie
+- name: ERSP
+  url: https://www.tandfonline.com/feed/rss/pers20
+  category: Sozial- & Persönlichkeitspsychologie
+- name: JSP
+  url: https://www.tandfonline.com/feed/rss/vsoc20
+  category: Sozial- & Persönlichkeitspsychologie
+- name: JSPR
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spr
+  category: Sozial- & Persönlichkeitspsychologie
+- name: Journal of Personality
+  url: https://onlinelibrary.wiley.com/feed/14676494/most-recent
+  category: Sozial- & Persönlichkeitspsychologie
+- name: Self and Identity
+  url: https://www.tandfonline.com/feed/rss/psai20
+  category: Sozial- & Persönlichkeitspsychologie
+
+# --- Allgemeine & Top-Tier ---
+- name: Nature Human Behaviour
+  url: https://www.nature.com/nathumbehav.rss
+  category: Allgemeine & Top-Tier
+- name: Psychological Science
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=pss
+  category: Allgemeine & Top-Tier
+- name: Perspectives on Psychological Science
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=pps
+  category: Allgemeine & Top-Tier
+- name: Psychological Bulletin
+  url: https://content.apa.org/journals/bul.rss
+  category: Allgemeine & Top-Tier
+- name: Psychological Review
+  url: https://content.apa.org/journals/rev.rss
+  category: Allgemeine & Top-Tier
+
+# --- Methoden & Open Science ---
+- name: AMPPS
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=amp
+  category: Methoden & Open Science
+- name: Psychological Methods
+  url: https://content.apa.org/journals/met.rss
+  category: Methoden & Open Science
+- name: Behavior Research Methods
+  url: https://link.springer.com/journal/13428.rss
+  category: Methoden & Open Science
+
+# --- Allgemeinwissenschaft ---
+- name: Nature
+  url: https://www.nature.com/nature.rss
+  category: Allgemeinwissenschaft
+- name: PLOS ONE
+  url: https://journals.plos.org/plosone/feed/atom
+  category: Allgemeinwissenschaft
