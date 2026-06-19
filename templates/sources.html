@@ -155,6 +155,18 @@ header.row nav a {
     <p><a href="/export/feeds.opml" class="secondary outline">⬇️ Feeds als OPML exportieren</a></p>
   </details>
 
+  <details>
+    <summary>Leseliste &amp; Status sichern / syncen</summary>
+    <p class="muted">Exportiert Leseliste + Gelesen-Markierungen als JSON. Auf dem anderen
+      PC wieder importieren – der Import <strong>führt zusammen</strong> (überschreibt nichts).
+      Die Datei kannst du per Git, Cloud oder USB rüberschieben.</p>
+    <form method="post" action="/settings/import_state" enctype="multipart/form-data" class="row" style="align-items:center;">
+      <input type="file" name="state" accept=".json,application/json" required>
+      <button type="submit">Status importieren</button>
+    </form>
+    <p><a href="/export/state.json" class="secondary outline">⬇️ Status als JSON exportieren</a></p>
+  </details>
+
   <h3>Allowlist (welche Feeds zeigen?)</h3>
   <p class="muted">Leer = alle Feeds erlaubt. Andernfalls werden nur die angehakten Feeds angezeigt.</p>
   <form method="post" action="/settings/update_allowlist">

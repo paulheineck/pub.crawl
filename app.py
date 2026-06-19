@@ -819,6 +819,73 @@ def settings_import_opml():
         clear_feed_cache()
     return redirect(url_for("index", mode="sources", msg=f"{added} Feed(s) aus OPML importiert"))
 
+@app.get("/export/state.json")
+def export_state():
+    """Leseliste + Gelesen-Markierungen als JSON (zum Sync zwischen Rechnern)."""
+    con = db()
+    starred = []
+    for r in con.execute("SELECT id, starred_at, snapshot FROM starred").fetchall():
+        try:
+            snap = json.loads(r["snapshot"]) if r["snapshot"] else {}
+        except Exception:
+            snap = {}
+        starred.append({"id": r["id"], "starred_at": r["starred_at"], "snapshot": snap})
+    read = [{"id": r["id"], "read_at": r["read_at"]}
+            for r in con.execute("SELECT id, read_at FROM read_items").fetchall()]
+    con.close()
+    data = {
+        "version": 1,
+        "exported_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "starred": starred,
+        "read": read,
+    }
+    payload = json.dumps(data, ensure_ascii=False, indent=2)
+    return Response(payload, mimetype="application/json",
+                    headers={"Content-Disposition": "attachment; filename=readr-state.json"})
+
+@app.post("/settings/import_state")
+def import_state():
+    """Status-JSON zusammenführen (Union – überschreibt/löscht nichts Vorhandenes)."""
+    file = request.files.get("state")
+    if not file or not file.filename:
+        return redirect(url_for("index", mode="sources", msg="Keine Status-Datei gewählt"))
+    try:
+        data = json.loads(file.read().decode("utf-8"))
+    except Exception as ex:
+        return redirect(url_for("index", mode="sources", msg=f"Status-Datei nicht lesbar: {ex}"))
+
+    now_iso = dt.datetime.now(dt.timezone.utc).isoformat()
+    s_added = r_added = 0
+    con = db()
+    try:
+        for item in data.get("starred", []) or []:
+            iid = (item or {}).get("id")
+            if not iid:
+                continue
+            snap_json = json.dumps(item.get("snapshot") or {}, ensure_ascii=False)
+            cur = con.execute(
+                "INSERT OR IGNORE INTO starred(id, starred_at, snapshot) VALUES(?,?,?)",
+                (iid, item.get("starred_at") or now_iso, snap_json)
+            )
+            s_added += cur.rowcount
+        for item in data.get("read", []) or []:
+            # erlaubt sowohl {"id":...} als auch nackte ID-Strings
+            if isinstance(item, str):
+                iid, ra = item, now_iso
+            else:
+                iid, ra = (item or {}).get("id"), ((item or {}).get("read_at") or now_iso)
+            if not iid:
+                continue
+            cur = con.execute(
+                "INSERT OR IGNORE INTO read_items(id, read_at) VALUES(?,?)", (iid, ra)
+            )
+            r_added += cur.rowcount
+        con.commit()
+    finally:
+        con.close()
+    return redirect(url_for("index", mode="sources",
+                            msg=f"Status importiert: +{s_added} Leseliste, +{r_added} Gelesen"))
+
 @app.get("/dl/ris")
 def dl_ris():
     doi = (request.args.get("doi") or "").strip()
