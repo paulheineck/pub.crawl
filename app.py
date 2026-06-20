@@ -346,15 +346,36 @@ def get_activity_stats():
 # über die Summe der Gewichte seiner Wörter bewertet. Alles lokal, kein ML-Stack.
 
 _STOPWORDS = set((
+    # häufige englische Funktionswörter (≥4 Buchstaben)
     "the a an of and or to in for on with we our this that these those is are was were be by as at "
     "from it its their they them than then so such can may might also more most into over under between "
-    "across using used use study studies results result effect effects across among within whether "
+    "across using used use within whether when what which where while there here been have here has had "
+    "does did doing done being will would could should about onto upon after before during through "
+    "because however therefore thus both each other others some many much very only same both per via "
+    "your ours into out not but toward towards based given likely often whose whom "
+    # akademisches Boilerplate (für ein Psych-Tool uninformativ)
+    "study studies results result effect effects research using paper article papers articles journal "
+    "volume issue abstract author authors published university department online print ahead early view "
+    "association copyright findings finding data analysis examine examined examines investigate "
+    "investigated present current advances directions bulletin review science sciences psychological "
+    "psychology approach approaches model models method methods evidence associated association level "
+    "levels role roles factor factors higher lower across among "
+    # deutsche Funktionswörter
     "der die das und oder ein eine einer den dem des mit für auf bei aus dass wir dieser diese dieses "
-    "von im am zur zum durch sowie wurde wurden werden ist sind war waren nicht auch nach"
+    "von im am zur zum durch sowie wurde wurden werden ist sind war waren nicht auch nach über unter "
+    "dabei sowie zwischen einer einem eines beim hierbei wobei deren dessen welche welcher"
 ).split())
 
+# Citation-/Boilerplate-Präfix vieler Verlags-Feeds entfernen, z. B.
+# "…Psychological Science, Volume 9, Issue 2, April-June 2026. <Abstract>"
+_CITATION = re.compile(r"^.{0,220}?\bvolume\s+\d+.{0,120}?\.\s+", re.I)
+_NOISE = re.compile(r"\b(ahead of print|early ?view|online version of record|advance online publication)\b", re.I)
+
 def _tok(text):
-    return {w for w in re.findall(r"[a-zäöüß]{4,}", (text or "").lower()) if w not in _STOPWORDS}
+    t = (text or "").lower()
+    t = _CITATION.sub("", t, count=1)   # Journal-Zitation am Anfang weg
+    t = _NOISE.sub(" ", t)
+    return {w for w in re.findall(r"[a-zäöüß]{4,}", t) if w not in _STOPWORDS}
 
 def relevance_counts():
     con = db()
@@ -383,6 +404,8 @@ def build_relevance():
 
     weights = {}
     for w in set(liked) | set(skipped):
+        if liked[w] + skipped[w] < 2:    # zu selten → überanpassungs-Rauschen
+            continue
         pL = (liked[w] + 1) / (nL + 2)
         pS = (skipped[w] + 1) / (nS + 2)
         weights[w] = math.log(pL / pS)
@@ -704,6 +727,8 @@ def index():
                 seen_keys.add(key)
                 it["starred"] = False
                 flat.append(it)
+        for it in flat:
+            it["why"] = None   # stale 'why' aus gecachten Dicts löschen (nur in 'relevance' setzen)
         if sort == "relevance" and rel_available:
             weights = build_relevance()
             for it in flat:

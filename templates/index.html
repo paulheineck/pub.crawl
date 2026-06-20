@@ -257,9 +257,8 @@ body.deck .item.d3::after, body.deck .item.d4::after {
     <header>
       <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
         <h1>Readr</h1>
-        {% if streak and streak > 0 %}
-          <span class="streak" title="{{ streak }} Tag(e) in Folge aktiv · heute {{ today_count }} gesichtet">🔥 {{ streak }} · heute {{ today_count }}</span>
-        {% endif %}
+        <span id="streak" class="streak" title="Tage in Folge aktiv · heute gesichtet"
+              {% if not streak and not today_count %}hidden{% endif %}>🔥 <span id="streakN">{{ streak }}</span> · heute <span id="todayN">{{ today_count }}</span></span>
         <nav>
           <a href="/?mode=feeds"   class="{{ 'contrast' if mode=='feeds'   else '' }}">Feed</a>
           <a href="/?mode=stars"   class="{{ 'contrast' if mode=='stars'   else '' }}">⭐ Leseliste</a>
@@ -295,13 +294,13 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       </article>
     {% endif %}
 
-    {% if rel_available and mode == 'feeds' %}
+    {% if mode == 'feeds' %}
       <article id="relNote" hidden style="border-left:3px solid var(--primary);padding:.7rem .9rem;margin-top:.8rem;">
         🧠 <strong>Relevanz-Ranking ist freigeschaltet!</strong>
-        readr hat aus deinen {{ n_liked }} Likes und {{ n_skipped }} Skips gelernt, welche Themen
-        dich interessieren, und kann den Feed jetzt „Für mich" sortieren — die spannendsten Paper
-        zuerst. Du erkennst es am Button oben (🧠) und an den 🧠-Stichwörtern an jeder Karte.
-        Umschalten kannst du jederzeit.
+        readr hat aus deinen <span id="relLiked">{{ n_liked }}</span> Likes und
+        <span id="relSkipped">{{ n_skipped }}</span> Skips gelernt, welche Themen dich interessieren,
+        und kann den Feed jetzt „Für mich" sortieren — die spannendsten Paper zuerst. Du erkennst es
+        am Button oben (🧠) und an den 🧠-Stichwörtern an jeder Karte. Umschalten jederzeit.
         <div style="margin-top:.6rem;display:flex;gap:.5rem;">
           <a href="/?mode=feeds&sort=relevance" role="button" class="contrast">🧠 Für mich nutzen</a>
           <button id="relDismiss" class="secondary outline" type="button">Verstanden</button>
@@ -444,6 +443,39 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       body: new URLSearchParams(data)
     });
 
+    // ---- Live-Zähler: Streak/"heute" + Relevanz-Freischaltung (ohne Reload) ----
+    let _streak  = {{ streak|int }};
+    let _today   = {{ today_count|int }};
+    let _liked   = {{ n_liked|int }};
+    let _skipped = {{ n_skipped|int }};
+    const MIN_REL = {{ min_rel|int }};
+
+    function renderStreak() {
+      const el = document.getElementById('streak');
+      if (!el) return;
+      document.getElementById('streakN').textContent = _streak;
+      document.getElementById('todayN').textContent = _today;
+      el.hidden = (_streak === 0 && _today === 0);
+    }
+    function bumpToday(delta) {
+      const wasZero = _today === 0;
+      _today = Math.max(0, _today + delta);
+      if (wasZero && _today > 0) _streak += 1;                     // erster Beitrag heute
+      else if (!wasZero && _today === 0) _streak = Math.max(0, _streak - 1);
+      renderStreak();
+    }
+    function checkRel() {
+      const note = document.getElementById('relNote');
+      if (!note) return;
+      const liked = document.getElementById('relLiked');
+      const skipped = document.getElementById('relSkipped');
+      if (liked) liked.textContent = _liked;
+      if (skipped) skipped.textContent = _skipped;
+      if (_liked >= MIN_REL && _skipped >= MIN_REL && localStorage.getItem('relSeen') !== '1') {
+        note.hidden = false;
+      }
+    }
+
     // Karte ausblenden (mit optionaler Animation) bzw. wiederherstellen
     function hideCard(card, dx) {
       const animate = localStorage.getItem('animateCards') !== '0';
@@ -495,8 +527,10 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       const res = await post('/star', data);
       if (!res.ok) return;
       hideCard(card, -70);
+      bumpToday(+1); _liked += 1; checkRel();
       showToast('⭐ Auf Leseliste', async () => {
         await post('/star', {...data, action: 'off'});
+        bumpToday(-1); _liked -= 1;
         restoreCard(card);
       });
     }
@@ -510,8 +544,10 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       });
       if (!res.ok) return;
       hideCard(card, 70);
+      bumpToday(+1); _skipped += 1; checkRel();
       showToast('✕ Ausgeblendet', async () => {
         await post('/unread', { id });
+        bumpToday(-1); _skipped -= 1;
         restoreCard(card);
       });
     }
@@ -732,13 +768,13 @@ body.deck .item.d3::after, body.deck .item.d4::after {
 
     applyView();
 
-    // Relevanz-Hinweis: einmalig zeigen, sobald freigeschaltet
-    const relNote = document.getElementById('relNote');
-    if (relNote && localStorage.getItem('relSeen') !== '1') relNote.hidden = false;
+    // Streak/Zähler initial rendern + Relevanz-Hinweis prüfen (auch live nach Swipes)
+    renderStreak();
+    checkRel();
     const relDismiss = document.getElementById('relDismiss');
     if (relDismiss) relDismiss.addEventListener('click', () => {
       localStorage.setItem('relSeen', '1');
-      relNote.hidden = true;
+      document.getElementById('relNote').hidden = true;
     });
   </script>
 </body>
