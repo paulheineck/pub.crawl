@@ -1,0 +1,24 @@
+# Beispiel-Konfiguration. Beim ersten Start kopiert readr diese Datei
+# automatisch nach config.yaml (das nicht versioniert wird – es ist deine
+# persönliche Datei, wie dashboard.db).
+#
+# Journals fügst du am besten direkt in der App hinzu:
+#   Einstellungen → "Aus Katalog hinzufügen" (nach Fachbereich sortiert)
+# oder per OPML-Import.
+
+feeds: []
+
+filters:
+  include: []
+  exclude:
+  - (?i)erratum|corrigendum|call for papers
+  journal_allowlist: []
+
+display:
+  max_items_per_feed: 30
+  show_abstract: true
+
+api:
+  # Optional: eigene E-Mail für Unpaywall (Open-Access-PDF-Suche).
+  # Leer lassen ist ok – dann wird auf die DOI-Seite verlinkt.
+  unpaywall_email: ""

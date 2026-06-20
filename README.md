@@ -128,8 +128,10 @@ readr/
 │   ├── index.html       # main UI
 │   └── sources.html     # settings view
 ├── static/              # optional local CSS/images
-├── config.yaml          # feeds and filters
+├── config.example.yaml  # template, copied to config.yaml on first run
+├── config.yaml          # your personal feeds & filters (auto-created, gitignored)
 ├── journals.yaml        # curated journal catalog for quick-add
+├── verify_feeds.py      # checks the catalog for dead feeds
 ├── dashboard.db         # auto-created local database
 ├── start Windows.bat    # quick start for Windows
 ├── start Mac.sh         # quick start for macOS

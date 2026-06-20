@@ -1,4 +1,4 @@
-import os, re, time, sqlite3, hashlib, datetime as dt, pathlib, traceback
+import os, re, time, sqlite3, hashlib, datetime as dt, pathlib, traceback, shutil
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as xml_escape
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -26,6 +26,15 @@ USER_AGENT = "ResearchDashboard/1.0 (+local)"
 CACHE_MINUTES = 10
 MAX_WORKERS = 6
 
+# Fallback, falls weder config.yaml noch config.example.yaml existieren
+DEFAULT_CFG = {
+    "feeds": [],
+    "filters": {"include": [], "exclude": ["(?i)erratum|corrigendum|call for papers"],
+                "journal_allowlist": []},
+    "display": {"max_items_per_feed": 30, "show_abstract": True},
+    "api": {"unpaywall_email": ""},
+}
+
 
 # ----------------------------- Flask -----------------------------------------
 
@@ -51,8 +60,17 @@ def add_security_headers(resp):
 # ----------------------------- Utilities -------------------------------------
 
 def load_cfg():
-    with open(APP_ROOT / "config.yaml", "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    path = APP_ROOT / "config.yaml"
+    if not path.exists():
+        # Erststart: aus der Vorlage anlegen (sonst Minimal-Default)
+        example = APP_ROOT / "config.example.yaml"
+        if example.exists():
+            shutil.copyfile(example, path)
+        else:
+            with open(path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(DEFAULT_CFG, f, sort_keys=False, allow_unicode=True)
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or DEFAULT_CFG
 
 def load_catalog():
     """Mitgelieferter Journal-Katalog (journals.yaml) für die Schnellauswahl."""
