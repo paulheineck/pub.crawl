@@ -61,6 +61,10 @@
       background: color-mix(in hsl, var(--muted-color-bg) 85%, transparent);
       white-space: nowrap;
     }
+    .chip.rel {
+      border-color: color-mix(in hsl, var(--primary) 55%, transparent);
+      background: color-mix(in hsl, var(--primary) 16%, var(--muted-color-bg));
+    }
 
     /* Choice-Bar (Feed-Modus) */
     .choicebar {
@@ -104,33 +108,6 @@
     }
 
     .choice svg { width:30px; height:30px; display:block; }
-
-    /* Gelesen-Button (Leseliste) */
-.read-btn {
-  background: none;
-  border: none;
-  color: var(--muted-color);
-  font-size: 0.85rem;
-  margin-left: 0.4rem;
-  padding: 0;
-  cursor: pointer;
-  line-height: 1.2;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  transition: color 0.15s ease, text-decoration-color 0.15s ease;
-}
-
-.read-btn:hover {
-  color: var(--primary);
-  text-decoration-color: var(--primary);
-}
-
-.read-btn:disabled {
-  color: var(--muted-color);
-  opacity: 0.6;
-  text-decoration: none;
-  cursor: default;
-}
 
 /* Undo-Toast */
 #toast {
@@ -292,8 +269,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       <div class="rightside">
         <input id="q" name="q" placeholder="Suche in Titel & Abstract" aria-label="Suche">
         {% if mode == 'feeds' %}
-          <a id="sortBtn" class="hbtn" href="/?mode=feeds&sort={{ 'shuffle' if sort=='new' else 'new' }}"
-             title="Sortierung umschalten">{{ '🆕 Neueste' if sort=='new' else '🔀 Zufall' }}</a>
+          <a id="sortBtn" class="hbtn" href="/?mode=feeds&sort={{ next_sort }}" title="Sortierung umschalten">{% if sort=='relevance' %}🧠 Für mich{% elif sort=='new' %}🆕 Neueste{% else %}🔀 Zufall{% endif %}</a>
           <button id="viewBtn" class="hbtn" type="button" title="Liste/Stapel umschalten">🃏 Stapel</button>
         {% endif %}
         <button id="themeBtn" class="hbtn icon" title="Theme umschalten">🌓</button>
@@ -316,6 +292,20 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         ⚠ {{ feed_errors|length }} Feed(s) nicht erreichbar
         (<a href="/?mode=sources">Details</a>):
         {{ feed_errors|map(attribute='name')|join(', ') }}
+      </article>
+    {% endif %}
+
+    {% if rel_available and mode == 'feeds' %}
+      <article id="relNote" hidden style="border-left:3px solid var(--primary);padding:.7rem .9rem;margin-top:.8rem;">
+        🧠 <strong>Relevanz-Ranking ist freigeschaltet!</strong>
+        readr hat aus deinen {{ n_liked }} Likes und {{ n_skipped }} Skips gelernt, welche Themen
+        dich interessieren, und kann den Feed jetzt „Für mich" sortieren — die spannendsten Paper
+        zuerst. Du erkennst es am Button oben (🧠) und an den 🧠-Stichwörtern an jeder Karte.
+        Umschalten kannst du jederzeit.
+        <div style="margin-top:.6rem;display:flex;gap:.5rem;">
+          <a href="/?mode=feeds&sort=relevance" role="button" class="contrast">🧠 Für mich nutzen</a>
+          <button id="relDismiss" class="secondary outline" type="button">Verstanden</button>
+        </div>
       </article>
     {% endif %}
 
@@ -353,7 +343,11 @@ body.deck .item.d3::after, body.deck .item.d4::after {
             <a class="meta-link" href="/dl/ris?doi={{ it.doi }}&title={{ it.title|urlencode }}">Cite (RIS)</a>
           {% endif %}
           {% if mode == 'stars' %}
-            <button class="secondary outline read-btn" data-read="{{ it.id }}">✅ Gelesen</button>
+            <button class="secondary outline remove-btn"
+              data-id="{{ it.id }}" data-title="{{ it.title }}" data-link="{{ it.link }}"
+              data-feed="{{ it.journal }}" data-date="{{ it.date }}" data-summary="{{ it.summary }}"
+              data-doi="{{ it.doi or '' }}" data-authors="{{ it.authors or '' }}"
+              data-authors_full="{{ it.authors_full or '' }}" data-note="{{ it.note or '' }}">🗑 Entfernen</button>
           {% endif %}
         </p>
 
@@ -367,6 +361,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
             placeholder="📝 Notiz / #tags …">{{ it.note }}</textarea>
         {% endif %}
         <div class="chips">
+          {% if it.why %}<span class="chip rel" title="Passt zu deinen Interessen">🧠 {{ it.why|join(', ') }}</span>{% endif %}
           {% if it.stats.N %}<span class="chip">N={{ it.stats.N }}</span>{% endif %}
           {% if it.stats.meta %}<span class="chip">Meta-Analysis</span>{% endif %}
           {% if it.stats.prereg %}<span class="chip">Preregistered/RR</span>{% endif %}
@@ -388,7 +383,8 @@ body.deck .item.d3::after, body.deck .item.d4::after {
             <svg viewBox="0 0 24 24"><path fill="currentColor"
               d="M12.1 21.35l-1.1-1.01C5.14 15.24 2 12.39 2 8.98 2 6.24 4.24 4 6.98 4c1.64 0 3.22.76 4.22 2 .99-1.24 2.58-2 4.22-2C18.76 4 21 6.24 21 8.98c0 3.41-3.14 6.26-8.9 11.36l-1 .91z"/></svg>
           </button>
-          <button class="choice skip" data-read="{{ it.id }}" title="Ausblenden (D)">
+          <button class="choice skip" data-read="{{ it.id }}"
+            data-title="{{ it.title }}" data-summary="{{ it.summary }}" title="Ausblenden (D)">
             <svg viewBox="0 0 24 24"><path fill="currentColor"
               d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.42L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/></svg>
           </button>
@@ -508,11 +504,32 @@ body.deck .item.d3::after, body.deck .item.d4::after {
     async function skipCard(btn) {
       const id = btn.dataset.read;
       const card = btn.closest('.item');
-      const res = await post('/mark_read', { id });
+      // Titel/Abstract mitschicken → fürs Relevanz-Modell (gelernt aus Skips)
+      const res = await post('/mark_read', {
+        id, title: btn.dataset.title || '', summary: btn.dataset.summary || ''
+      });
       if (!res.ok) return;
       hideCard(card, 70);
       showToast('✕ Ausgeblendet', async () => {
         await post('/unread', { id });
+        restoreCard(card);
+      });
+    }
+
+    // Leseliste: aus der Liste entfernen (unstar) – mit Undo (stellt Eintrag wieder her)
+    async function removeFromList(btn) {
+      const d = btn.dataset;
+      const card = btn.closest('.item');
+      const res = await post('/unstar', { id: d.id });
+      if (!res.ok) return;
+      hideCard(card, 70);
+      showToast('🗑 Entfernt', async () => {
+        await post('/star', {
+          id: d.id, action: 'on', title: d.title, link: d.link, feed: d.feed,
+          date: d.date, summary: d.summary, doi: d.doi,
+          authors: d.authors, authors_full: d.authors_full
+        });
+        if (d.note) await post('/star/note', { id: d.id, note: d.note });
         restoreCard(card);
       });
     }
@@ -524,9 +541,8 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         btn.addEventListener('click', () => skipCard(btn)));
     }
     if (MODE === 'stars') {
-      // In der Leseliste = "Gelesen" → wie Skip (mit Undo)
-      document.querySelectorAll('.read-btn').forEach(btn =>
-        btn.addEventListener('click', () => skipCard(btn)));
+      document.querySelectorAll('.remove-btn').forEach(btn =>
+        btn.addEventListener('click', () => removeFromList(btn)));
     }
 
     // Keyboard-Shortcuts:  l = Like · d = Skip/Gelesen · j/k = runter/hoch · / = Suche · ? = Hilfe
@@ -565,7 +581,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         case 'j': if (!deck) setCurrent(items[Math.min(idx + 1, items.length - 1)]); break;
         case 'k': if (!deck) setCurrent(items[Math.max(idx - 1, 0)]); break;
         case 'l': cur && cur.querySelector('.choice.like')?.click(); break;
-        case 'd': cur && (cur.querySelector('.choice.skip') || cur.querySelector('.read-btn'))?.click(); break;
+        case 'd': cur && (cur.querySelector('.choice.skip') || cur.querySelector('.remove-btn'))?.click(); break;
         default: return;
       }
       e.preventDefault();
@@ -715,6 +731,15 @@ body.deck .item.d3::after, body.deck .item.d4::after {
     });
 
     applyView();
+
+    // Relevanz-Hinweis: einmalig zeigen, sobald freigeschaltet
+    const relNote = document.getElementById('relNote');
+    if (relNote && localStorage.getItem('relSeen') !== '1') relNote.hidden = false;
+    const relDismiss = document.getElementById('relDismiss');
+    if (relDismiss) relDismiss.addEventListener('click', () => {
+      localStorage.setItem('relSeen', '1');
+      relNote.hidden = true;
+    });
   </script>
 </body>
 </html>

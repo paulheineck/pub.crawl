@@ -1,6 +1,7 @@
-import os, re, time, sqlite3, hashlib, datetime as dt, pathlib, traceback, shutil
+import os, re, time, sqlite3, hashlib, datetime as dt, pathlib, traceback, shutil, math
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as xml_escape
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yaml
@@ -25,6 +26,9 @@ USER_AGENT = "ResearchDashboard/1.0 (+local)"
 
 CACHE_MINUTES = 10
 MAX_WORKERS = 6
+
+MIN_REL = 10        # ab so vielen Likes UND Skips ist das Relevanz-Ranking verfügbar
+MAX_SKIPS = 2000    # so viele geskippte Artikel (mit Text) werden vorgehalten
 
 # Fallback, falls weder config.yaml noch config.example.yaml existieren
 DEFAULT_CFG = {
@@ -273,6 +277,12 @@ def init_db():
             con.execute(f"ALTER TABLE starred ADD COLUMN {col} TEXT")
         except Exception:
             pass
+    # Text der geskippten Artikel für das Relevanz-Modell
+    for col in ("title", "summary"):
+        try:
+            con.execute(f"ALTER TABLE read_items ADD COLUMN {col} TEXT")
+        except Exception:
+            pass
     con.commit()
     con.close()
 
@@ -281,9 +291,18 @@ def make_item_id(feed_name, link, title):
     base = f"{feed_name}|{link or ''}|{title or ''}"
     return hashlib.sha1(base.encode("utf-8","ignore")).hexdigest()
 
-def mark_read(iid):
+def mark_read(iid, title=None, summary=None):
     con = db()
-    con.execute("INSERT OR REPLACE INTO read_items(id, read_at) VALUES(?, datetime('now'))", (iid,))
+    con.execute(
+        "INSERT OR REPLACE INTO read_items(id, read_at, title, summary) VALUES(?, datetime('now'), ?, ?)",
+        (iid, title, summary)
+    )
+    # alte Skips ausdünnen (DB klein halten); nur die neuesten MAX_SKIPS behalten
+    con.execute(
+        "DELETE FROM read_items WHERE id NOT IN "
+        "(SELECT id FROM read_items ORDER BY read_at DESC LIMIT ?)",
+        (MAX_SKIPS,)
+    )
     con.commit()
     con.close()
 
@@ -319,6 +338,62 @@ def get_activity_stats():
         streak += 1
         d -= dt.timedelta(days=1)
     return streak, int(today_count or 0)
+
+
+# ----------------------------- Relevanz-Ranking ------------------------------
+# Mini-Modell (Naive-Bayes-Log-Odds): Wörter, die in gelikten Abstracts häufiger
+# vorkommen als in geskippten, bekommen positives Gewicht. Ein neues Paper wird
+# über die Summe der Gewichte seiner Wörter bewertet. Alles lokal, kein ML-Stack.
+
+_STOPWORDS = set((
+    "the a an of and or to in for on with we our this that these those is are was were be by as at "
+    "from it its their they them than then so such can may might also more most into over under between "
+    "across using used use study studies results result effect effects across among within whether "
+    "der die das und oder ein eine einer den dem des mit für auf bei aus dass wir dieser diese dieses "
+    "von im am zur zum durch sowie wurde wurden werden ist sind war waren nicht auch nach"
+).split())
+
+def _tok(text):
+    return {w for w in re.findall(r"[a-zäöüß]{4,}", (text or "").lower()) if w not in _STOPWORDS}
+
+def relevance_counts():
+    con = db()
+    nl = con.execute("SELECT COUNT(*) FROM starred").fetchone()[0]
+    ns = con.execute("SELECT COUNT(*) FROM read_items WHERE title IS NOT NULL OR summary IS NOT NULL").fetchone()[0]
+    con.close()
+    return int(nl or 0), int(ns or 0)
+
+def build_relevance():
+    """Wortgewichte aus Likes (starred.snapshot) und Skips (read_items.title/summary)."""
+    con = db()
+    liked_rows = con.execute("SELECT snapshot FROM starred").fetchall()
+    skip_rows = con.execute("SELECT title, summary FROM read_items WHERE title IS NOT NULL OR summary IS NOT NULL").fetchall()
+    con.close()
+
+    liked, skipped = Counter(), Counter()
+    nL = nS = 0
+    for r in liked_rows:
+        try:
+            s = json.loads(r["snapshot"]) if r["snapshot"] else {}
+        except Exception:
+            s = {}
+        liked.update(_tok(f"{s.get('title','')} {s.get('summary','')}")); nL += 1
+    for r in skip_rows:
+        skipped.update(_tok(f"{r['title'] or ''} {r['summary'] or ''}")); nS += 1
+
+    weights = {}
+    for w in set(liked) | set(skipped):
+        pL = (liked[w] + 1) / (nL + 2)
+        pS = (skipped[w] + 1) / (nS + 2)
+        weights[w] = math.log(pL / pS)
+    return weights
+
+def score_text(text, weights):
+    """(Score, Top-2 Interessens-Wörter) für ein Paper."""
+    contrib = sorted(((weights.get(w, 0.0), w) for w in _tok(text)), reverse=True)
+    score = sum(val for val, _ in contrib)
+    why = [w for val, w in contrib if val > 0][:2]
+    return score, why
 
 
 # ----------------------------- Feed Fetching (parallel + cache) --------------
@@ -569,9 +644,18 @@ def extract_authors_from_feedentry(e):
 def index():
     cfg = load_cfg()
     mode = request.args.get("mode", "feeds")  # "feeds", "stars", "sources"
-    # Sortierung: 'new' (neueste zuerst) oder 'shuffle'; per Cookie gemerkt
-    sort = request.args.get("sort") or request.cookies.get("sort_pref") or "shuffle"
     streak, today_count = get_activity_stats()
+
+    # Sortier-Modi: 'relevance' (Für mich) wird erst nach genug Likes+Skips
+    # verfügbar; sonst nur 'new' / 'shuffle'. Auswahl per Cookie gemerkt.
+    n_liked, n_skipped = relevance_counts()
+    rel_available = n_liked >= MIN_REL and n_skipped >= MIN_REL
+    sort_modes = (["relevance"] if rel_available else []) + ["new", "shuffle"]
+    sort = request.args.get("sort") or request.cookies.get("sort_pref") \
+        or ("relevance" if rel_available else "shuffle")
+    if sort not in sort_modes:
+        sort = sort_modes[0]
+    next_sort = sort_modes[(sort_modes.index(sort) + 1) % len(sort_modes)]
 
     if mode == "stars":
         entries = get_starred_entries()
@@ -620,7 +704,14 @@ def index():
                 seen_keys.add(key)
                 it["starred"] = False
                 flat.append(it)
-        if sort == "new":
+        if sort == "relevance" and rel_available:
+            weights = build_relevance()
+            for it in flat:
+                sc, why = score_text(f"{it.get('title','')} {it.get('summary','')}", weights)
+                it["_score"] = sc
+                it["why"] = why
+            flat.sort(key=lambda it: it["_score"], reverse=True)
+        elif sort == "new":
             flat.sort(key=lambda it: it.get("date") or "", reverse=True)
         else:
             random.shuffle(flat)
@@ -635,6 +726,11 @@ def index():
         list_title=list_title,
         mode=mode,
         sort=sort,
+        next_sort=next_sort,
+        rel_available=rel_available,
+        n_liked=n_liked,
+        n_skipped=n_skipped,
+        min_rel=MIN_REL,
         streak=streak,
         today_count=today_count,
         no_feeds=not (cfg.get("feeds")),
@@ -653,7 +749,21 @@ def route_mark_read():
     iid = request.form.get("id","")
     if not iid:
         abort(400)
-    mark_read(iid)
+    title = (request.form.get("title") or "").strip() or None
+    summary = (request.form.get("summary") or "").strip() or None
+    mark_read(iid, title, summary)
+    return jsonify({"ok": True})
+
+@app.post("/unstar")
+def route_unstar():
+    """Entfernt einen Eintrag aus der Leseliste (für 'Entfernen' mit Undo)."""
+    iid = request.form.get("id", "")
+    if not iid:
+        abort(400)
+    con = db()
+    con.execute("DELETE FROM starred WHERE id=?", (iid,))
+    con.commit()
+    con.close()
     return jsonify({"ok": True})
 
 @app.post("/unread")

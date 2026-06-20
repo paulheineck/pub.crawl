@@ -11,7 +11,7 @@ with Open Access and citation tools built right in.
 * 🧠 Collects and displays entries from multiple RSS/Atom feeds (e.g., journals, preprint servers)
 * 🃏 Swipeable **card-stack mode** (default) for fast Tinder-style triage — or a classic list view
 * 💡 “Like” (add to reading list) / “Skip” (hide) with one-tap **undo**
-* 🔀 Toggle between shuffle (fresh every reload) and newest-first sorting
+* 🔀 Sort by shuffle, newest-first, or **“For me”** — a local relevance ranking that learns from your likes/skips (unlocks automatically after enough triage, shows *why* each paper matched)
 * 📈 Daily streak, “seen today” counter, progress + inbox-zero celebration
 * 🌗 Auto dark/light mode via Pico.css
 * 🔍 Local full-text search in title & abstract
