@@ -206,6 +206,15 @@ textarea.note {
 
 #progress { font-variant-numeric: tabular-nums; }
 
+/* Onboarding (keine Feeds abonniert) */
+.onboard {
+  margin-top: 1rem; padding: 1.5rem 1.7rem; border-radius: 14px;
+  border: 1px solid var(--pico-muted-border-color, rgba(127,127,127,.28));
+  background: var(--pico-card-background-color, var(--pico-background-color, #fff));
+  text-align: center;
+}
+.onboard p { color: var(--muted-color); margin: .4rem 0 1rem 0; }
+
 /* Inbox-Zero */
 #done { text-align: center; padding: 2.5rem 1rem; color: var(--muted-color); }
 #done .done-emoji { font-size: 3.2rem; line-height: 1; animation: pop .5s ease; }
@@ -291,7 +300,14 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       </div>
     </header>
 
-    {% if no_new %}
+    {% if no_feeds and mode != 'sources' %}
+      <article class="onboard">
+        <h3 style="margin-top:0;">👋 Willkommen bei readr!</h3>
+        <p>Du hast noch keine Journals abonniert. Wähle welche aus dem Katalog —
+           nach Fachbereich sortiert und sofort einsatzbereit.</p>
+        <a href="/?mode=sources" role="button" class="contrast">📚 Journals aus dem Katalog wählen</a>
+      </article>
+    {% elif no_new %}
       <article class="error" style="padding:.75rem; margin-top:.8rem;">Es sind keine neuen Artikel verfügbar</article>
     {% endif %}
 

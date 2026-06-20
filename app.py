@@ -619,6 +619,7 @@ def index():
         sort=sort,
         streak=streak,
         today_count=today_count,
+        no_feeds=not (cfg.get("feeds")),
         no_new=(len(entries) == 0),
         feed_errors=(feed_errors if mode == "feeds" else []),
         last_seen=last_seen
