@@ -1,21 +1,41 @@
 # Kuratierter Journal-Katalog für die Schnellauswahl in den Einstellungen.
-# Format: - name / url / category
-# Einfach erweitern – neue Einträge erscheinen automatisch im Katalog.
-# Tipp: Eine nicht erreichbare URL taucht nach dem Hinzufügen oben als
-# "⚠ Feed nicht erreichbar" auf und kann dann wieder entfernt werden.
-
-# --- Sozial- & Persönlichkeitspsychologie ---
-- name: JPSP
-  url: https://content.apa.org/journals/psp.rss
+# Alle Einträge wurden per Probe-Request verifiziert (lieferten Einträge).
+# Format: - name / url / category. Einfach erweitern – taucht autom. im Katalog auf.
+- name: American Psychologist
+  url: https://content.apa.org/journals/amp.rss
+  category: Allgemein & Top-Tier
+- name: Current Directions in Psychological Science
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=cdp
+  category: Allgemein & Top-Tier
+- name: Nature Human Behaviour
+  url: https://www.nature.com/nathumbehav.rss
+  category: Allgemein & Top-Tier
+- name: Perspectives on Psychological Science
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=pps
+  category: Allgemein & Top-Tier
+- name: Psychological Bulletin
+  url: https://content.apa.org/journals/bul.rss
+  category: Allgemein & Top-Tier
+- name: Psychological Review
+  url: https://content.apa.org/journals/rev.rss
+  category: Allgemein & Top-Tier
+- name: Psychological Science
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=pss
+  category: Allgemein & Top-Tier
+- name: Trends in Cognitive Sciences
+  url: https://rss.sciencedirect.com/publication/science/13646613
+  category: Allgemein & Top-Tier
+- name: Aggressive Behavior
+  url: https://onlinelibrary.wiley.com/feed/10982337/most-recent
   category: Sozial- & Persönlichkeitspsychologie
-- name: PSPB
-  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psp
+- name: BJSP
+  url: https://onlinelibrary.wiley.com/feed/20448309/most-recent
   category: Sozial- & Persönlichkeitspsychologie
-- name: PSPR
-  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psr
+- name: EJSP
+  url: https://onlinelibrary.wiley.com/feed/10990992/most-recent
   category: Sozial- & Persönlichkeitspsychologie
-- name: SPPS
-  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spp
+- name: ERSP
+  url: https://www.tandfonline.com/feed/rss/pers20
   category: Sozial- & Persönlichkeitspsychologie
 - name: GPIR
   url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=gpi
@@ -23,57 +43,126 @@
 - name: JESP
   url: https://rss.sciencedirect.com/publication/science/00221031
   category: Sozial- & Persönlichkeitspsychologie
-- name: EJSP
-  url: https://onlinelibrary.wiley.com/feed/10990992/most-recent
+- name: Journal of Personality
+  url: https://onlinelibrary.wiley.com/feed/14676494/most-recent
   category: Sozial- & Persönlichkeitspsychologie
-- name: BJSP
-  url: https://onlinelibrary.wiley.com/feed/20448309/most-recent
+- name: Journal of Research in Personality
+  url: https://rss.sciencedirect.com/publication/science/00926566
   category: Sozial- & Persönlichkeitspsychologie
-- name: ERSP
-  url: https://www.tandfonline.com/feed/rss/pers20
+- name: JPSP
+  url: https://content.apa.org/journals/psp.rss
   category: Sozial- & Persönlichkeitspsychologie
-- name: JSP
+- name: JSP (Journal of Social Psychology)
   url: https://www.tandfonline.com/feed/rss/vsoc20
   category: Sozial- & Persönlichkeitspsychologie
 - name: JSPR
   url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spr
   category: Sozial- & Persönlichkeitspsychologie
-- name: Journal of Personality
-  url: https://onlinelibrary.wiley.com/feed/14676494/most-recent
+- name: Personality and Individual Differences
+  url: https://rss.sciencedirect.com/publication/science/01918869
+  category: Sozial- & Persönlichkeitspsychologie
+- name: PSPB
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psp
+  category: Sozial- & Persönlichkeitspsychologie
+- name: PSPR
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psr
   category: Sozial- & Persönlichkeitspsychologie
 - name: Self and Identity
   url: https://www.tandfonline.com/feed/rss/psai20
   category: Sozial- & Persönlichkeitspsychologie
-
-# --- Allgemeine & Top-Tier ---
-- name: Nature Human Behaviour
-  url: https://www.nature.com/nathumbehav.rss
-  category: Allgemeine & Top-Tier
-- name: Psychological Science
-  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=pss
-  category: Allgemeine & Top-Tier
-- name: Perspectives on Psychological Science
-  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=pps
-  category: Allgemeine & Top-Tier
-- name: Psychological Bulletin
-  url: https://content.apa.org/journals/bul.rss
-  category: Allgemeine & Top-Tier
-- name: Psychological Review
-  url: https://content.apa.org/journals/rev.rss
-  category: Allgemeine & Top-Tier
-
-# --- Methoden & Open Science ---
+- name: SPPS
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spp
+  category: Sozial- & Persönlichkeitspsychologie
+- name: Applied Cognitive Psychology
+  url: https://onlinelibrary.wiley.com/feed/10990720/most-recent
+  category: Kognitive Psychologie
+- name: Cognition
+  url: https://rss.sciencedirect.com/publication/science/00100277
+  category: Kognitive Psychologie
+- name: Cognition and Emotion
+  url: https://www.tandfonline.com/feed/rss/pcem20
+  category: Kognitive Psychologie
+- name: Cognitive Psychology
+  url: https://rss.sciencedirect.com/publication/science/00100285
+  category: Kognitive Psychologie
+- name: 'JEP: General'
+  url: https://content.apa.org/journals/xge.rss
+  category: Kognitive Psychologie
+- name: 'JEP: Learning, Memory, and Cognition'
+  url: https://content.apa.org/journals/xlm.rss
+  category: Kognitive Psychologie
+- name: Memory
+  url: https://www.tandfonline.com/feed/rss/pmem20
+  category: Kognitive Psychologie
+- name: Developmental Psychology
+  url: https://content.apa.org/journals/dev.rss
+  category: Entwicklungspsychologie
+- name: Developmental Science
+  url: https://onlinelibrary.wiley.com/feed/14677687/most-recent
+  category: Entwicklungspsychologie
+- name: Journal of Experimental Child Psychology
+  url: https://rss.sciencedirect.com/publication/science/00220965
+  category: Entwicklungspsychologie
+- name: Behaviour Research and Therapy
+  url: https://rss.sciencedirect.com/publication/science/00057967
+  category: Klinische Psychologie & Psychopathologie
+- name: Clinical Psychological Science
+  url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=cpx
+  category: Klinische Psychologie & Psychopathologie
+- name: Clinical Psychology Review
+  url: https://rss.sciencedirect.com/publication/science/02727358
+  category: Klinische Psychologie & Psychopathologie
+- name: Journal of Consulting and Clinical Psychology
+  url: https://content.apa.org/journals/ccp.rss
+  category: Klinische Psychologie & Psychopathologie
+- name: Journal of Psychopathology and Clinical Science
+  url: https://content.apa.org/journals/abn.rss
+  category: Klinische Psychologie & Psychopathologie
+- name: Psychology of Addictive Behaviors
+  url: https://content.apa.org/journals/adb.rss
+  category: Klinische Psychologie & Psychopathologie
+- name: Health Psychology
+  url: https://content.apa.org/journals/hea.rss
+  category: Gesundheitspsychologie
+- name: Journal of Applied Psychology
+  url: https://content.apa.org/journals/apl.rss
+  category: Arbeits- & Organisationspsychologie
+- name: Journal of Occupational Health Psychology
+  url: https://content.apa.org/journals/ocp.rss
+  category: Arbeits- & Organisationspsychologie
+- name: Journal of Organizational Behavior
+  url: https://onlinelibrary.wiley.com/feed/10991379/most-recent
+  category: Arbeits- & Organisationspsychologie
+- name: Personnel Psychology
+  url: https://onlinelibrary.wiley.com/feed/17446570/most-recent
+  category: Arbeits- & Organisationspsychologie
+- name: Contemporary Educational Psychology
+  url: https://rss.sciencedirect.com/publication/science/0361476X
+  category: Pädagogische Psychologie
+- name: Journal of Educational Psychology
+  url: https://content.apa.org/journals/edu.rss
+  category: Pädagogische Psychologie
+- name: Learning and Instruction
+  url: https://rss.sciencedirect.com/publication/science/09594752
+  category: Pädagogische Psychologie
+- name: Biological Psychology
+  url: https://rss.sciencedirect.com/publication/science/03010511
+  category: Biologische Psychologie & Neurowissenschaft
+- name: Emotion
+  url: https://content.apa.org/journals/emo.rss
+  category: Biologische Psychologie & Neurowissenschaft
+- name: Neuropsychology
+  url: https://content.apa.org/journals/neu.rss
+  category: Biologische Psychologie & Neurowissenschaft
+- name: Psychology and Aging
+  url: https://content.apa.org/journals/pag.rss
+  category: Biologische Psychologie & Neurowissenschaft
 - name: AMPPS
   url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=amp
   category: Methoden & Open Science
 - name: Psychological Methods
   url: https://content.apa.org/journals/met.rss
   category: Methoden & Open Science
-- name: Behavior Research Methods
-  url: https://link.springer.com/journal/13428.rss
-  category: Methoden & Open Science
-
-# --- Allgemeinwissenschaft ---
 - name: Nature
   url: https://www.nature.com/nature.rss
   category: Allgemeinwissenschaft
