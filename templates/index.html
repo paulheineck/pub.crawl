@@ -219,24 +219,48 @@ textarea.note {
 @keyframes fall { to { transform: translateY(106vh) rotate(560deg); opacity: 1; } }
 
 /* Stapel-Modus: echter Kartenstapel */
-body.deck #progress { text-align: center; font-size: 1rem; margin: 0 0 .6rem 0; }
-body.deck #list { position: relative; min-height: 62vh; }
+body.deck #progress {
+  position: fixed; left: 0; right: 0; bottom: .9rem; z-index: 40;
+  text-align: center; margin: 0; font-size: .9rem;
+  color: var(--muted-color); pointer-events: none;
+}
+body.deck #list { position: relative; min-height: 62vh; padding-bottom: 2rem; }
 body.deck #list.empty { min-height: 0; }
 body.deck .item {
-  position: absolute; top: 0; left: 50%; width: min(640px, 94%);
+  position: absolute; top: 0; left: 50%; width: min(720px, 94%);
+  padding: 1.5rem 1.7rem 1.8rem;            /* größer + mehr Luft */
+  overflow: hidden;                         /* hintere Karten clampen */
   transform: translateX(-50%);
-  transition: transform .28s ease, opacity .28s ease, box-shadow .28s ease;
+  transition: transform .3s ease, opacity .3s ease, height .3s ease, box-shadow .3s ease;
+  /* WICHTIG: deckender Hintergrund, sonst sieht man durch den Stapel */
+  background: var(--pico-card-background-color, var(--pico-background-color, #fff));
+  border: 1px solid var(--pico-muted-border-color, rgba(127,127,127,.28));
 }
+/* mehr Abstand zwischen Karteninhalt/Rand und den Swipe-Buttons */
+body.deck .item.d0 .choicebar { margin-top: 1.4rem; }
 /* nur die obersten 5 Karten sichtbar; Rest/gefiltert/erledigt aus */
 body.deck .item:not(.d0):not(.d1):not(.d2):not(.d3):not(.d4),
 body.deck .item.hidden, body.deck .item.gone { display: none; }
-/* gestaffelte Tiefe – wirkt dicker, je mehr dahinter liegt */
-body.deck .item.d0 { z-index: 50; transform: translateX(-50%) translateY(0)   scale(1);   box-shadow: 0 16px 36px rgba(0,0,0,.22); }
-body.deck .item.d1 { z-index: 49; transform: translateX(-50%) translateY(14px) scale(.972); opacity: .97; }
-body.deck .item.d2 { z-index: 48; transform: translateX(-50%) translateY(28px) scale(.944); opacity: .93; }
-body.deck .item.d3 { z-index: 47; transform: translateX(-50%) translateY(42px) scale(.916); opacity: .88; }
-body.deck .item.d4 { z-index: 46; transform: translateX(-50%) translateY(56px) scale(.888); opacity: .82; }
+/* Vorderste Karte: volle Höhe, mittig, kein Clipping */
+body.deck .item.d0 {
+  z-index: 50; overflow: visible;
+  transform: translateX(-50%);
+  box-shadow: 0 18px 40px rgba(0,0,0,.24);
+}
+/* dahinter: nach links-unten versetzt + leicht gedreht = sichtbarer Fächer */
+body.deck .item.d1 { z-index: 49; opacity: .97; transform: translateX(-50%) translate(-9px, 12px) rotate(-1.8deg); }
+body.deck .item.d2 { z-index: 48; opacity: .92; transform: translateX(-50%) translate(-18px, 22px) rotate(-3.6deg); }
+body.deck .item.d3 { z-index: 47; opacity: .87; transform: translateX(-50%) translate(-27px, 32px) rotate(-5.4deg); }
+body.deck .item.d4 { z-index: 46; opacity: .82; transform: translateX(-50%) translate(-36px, 42px) rotate(-7.2deg); }
 body.deck .item:not(.d0) { pointer-events: none; }   /* nur oberste interaktiv */
+/* sanfter Verlauf über dem abgeschnittenen Text der hinteren Karten */
+body.deck .item.d1::after, body.deck .item.d2::after,
+body.deck .item.d3::after, body.deck .item.d4::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent,
+    var(--pico-card-background-color, var(--pico-background-color, #fff)));
+}
 /* sanfter Wechsel Liste↔Stapel */
 #list { transition: opacity .12s ease; }
 
@@ -544,7 +568,21 @@ body.deck .item:not(.d0) { pointer-events: none; }   /* nur oberste interaktiv *
     const viewBtn = document.getElementById('viewBtn');
     const initialCount = visibleItems().length;
     const DEPTH = 5;                 // so viele Karten zeigt der Stapel maximal
+    const STACK_H = 340;             // einheitliche Höhe der hinteren Karten (px)
     let lastN = initialCount;
+
+    // Echte Inhaltshöhe einer Karte – unabhängig von einer evtl. gesetzten
+    // (geclampten) Höhe, damit auch kurze Karten korrekt vermessen werden.
+    function measureContent(card) {
+      const padB = parseFloat(getComputedStyle(card).paddingBottom) || 0;
+      let bottom = 0;
+      for (const ch of card.children) {
+        if (ch.hidden) continue;
+        const b = ch.offsetTop + ch.offsetHeight;
+        if (b > bottom) bottom = b;
+      }
+      return Math.ceil(bottom + padB) + 2;   // +2 px Puffer gegen Clipping
+    }
 
     function updateView() {
       const items = visibleItems();   // ohne .hidden (Suche) und .gone (erledigt)
@@ -559,6 +597,21 @@ body.deck .item:not(.d0) { pointer-events: none; }   /* nur oberste interaktiv *
         items.slice(0, DEPTH).forEach((el, i) => el.classList.add('d' + i));
       }
       if (listEl) listEl.classList.toggle('empty', n === 0);
+
+      // Höhen: Frontkarte = natürliche Inhaltshöhe; hintere Karten einheitlich
+      // auf min(STACK_H, Fronthöhe) – so lugt nie eine hintere Karte unter der
+      // Front hervor, und kurze Frontkarten bekommen keine Leerfläche unten.
+      if (deck) {
+        const top = items[0] || null;
+        const naturalH = top ? measureContent(top) : 0;
+        const backH = Math.min(STACK_H, naturalH || STACK_H);
+        // nur die obersten DEPTH Karten anfassen – der Rest ist display:none
+        items.slice(0, DEPTH).forEach((el, i) => {
+          el.style.height = (i === 0 ? naturalH : backH) + 'px';
+        });
+      } else {
+        document.querySelectorAll('.item').forEach(el => { el.style.height = ''; });
+      }
 
       if (progressEl)
         progressEl.textContent = searching ? `${n} Treffer` : (n ? `noch ${n}` : '');
@@ -592,7 +645,7 @@ body.deck .item:not(.d0) { pointer-events: none; }   /* nur oberste interaktiv *
 
     // Liste ⇄ Stapel (nur im Feed)
     function applyView(animateSwitch) {
-      const deck = (MODE === 'feeds') && localStorage.getItem('viewMode') === 'deck';
+      const deck = (MODE === 'feeds') && localStorage.getItem('viewMode') !== 'list';
       const doIt = () => {
         body.classList.toggle('deck', deck);
         if (viewBtn) viewBtn.textContent = deck ? '📄 Liste' : '🃏 Stapel';
@@ -620,6 +673,11 @@ body.deck .item:not(.d0) { pointer-events: none; }   /* nur oberste interaktiv *
         btn.addEventListener('click', () => {
           const clamped = ab.classList.toggle('clamped');
           btn.textContent = clamped ? 'mehr ▾' : 'weniger ▴';
+          // im Stapelmodus die Höhe der obersten Karte nachführen
+          if (body.classList.contains('deck')) {
+            const card = ab.closest('.item');
+            if (card) card.style.height = measureContent(card) + 'px';
+          }
         });
       }
     });

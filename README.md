@@ -9,14 +9,18 @@ with Open Access and citation tools built right in.
 ## 🚀 Features
 
 * 🧠 Collects and displays entries from multiple RSS/Atom feeds (e.g., journals, preprint servers)
+* 🃏 Swipeable **card-stack mode** (default) for fast Tinder-style triage — or a classic list view
+* 💡 “Like” (add to reading list) / “Skip” (hide) with one-tap **undo**
+* 🔀 Toggle between shuffle (fresh every reload) and newest-first sorting
+* 📈 Daily streak, “seen today” counter, progress + inbox-zero celebration
 * 🌗 Auto dark/light mode via Pico.css
 * 🔍 Local full-text search in title & abstract
-* 💡 “Like” (add to reading list) / “Skip” (hide) buttons
-* ⭐ Persistent reading list with RIS export
+* 📖 Expandable abstracts, plus 📄 Open-Access (Unpaywall) & 🎓 Scholar links
+* ⭐ Persistent reading list with notes/#tags and RIS export
 * 🧾 DOI & CrossRef integration for citation metadata
 * 📚 Built-in journal catalog for one-click feed selection
-* 🔁 OPML import/export (compatible with Feedly, Inoreader, …)
-* ↩️ Undo for like/skip, plus a feed-health warning for broken feeds
+* 🔁 OPML import/export + JSON state sync between machines
+* ⚠️ Feed-health warning for broken feeds
 * ⚙ Simple YAML configuration (`config.yaml`) — no database setup required
 * 🕓 Offline caching and read-state persistence (SQLite)
 
@@ -101,12 +105,14 @@ display:
 ## ⚙ Options
 
 * **Mode toggle:** switch between *Feed*, *Reading List*, and *Settings*
-* **Dark/light mode:** toggle via 🌙 button (stored in localStorage)
+* **View toggle:** card **stack** (default) ⇄ **list** — your choice is remembered per device
+* **Sort toggle:** shuffle ⇄ newest-first — remembered per device
+* **Dark/light mode:** toggle via 🌓 button (stored in localStorage)
 * **Keyboard shortcuts:**
 
   * `l` → Like / add to list
   * `d` → Dislike / hide
-  * `j` / `k` → Move down/up
+  * `j` / `k` → Move down/up (list view)
   * `/` → Focus search bar
   * `?` → Show keyboard-shortcut help
 
