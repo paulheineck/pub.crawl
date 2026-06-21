@@ -15,7 +15,8 @@ with Open Access and citation tools built right in.
 * 📈 Daily streak, “seen today” counter, progress + inbox-zero celebration
 * 🌗 Auto dark/light mode via Pico.css
 * 🔍 Local full-text search in title & abstract
-* 📖 Expandable abstracts, plus 📄 Open-Access (Unpaywall) & 🎓 Scholar links
+* 📖 Clean, expandable abstracts — strips publisher citation cruft and pulls the full text from CrossRef when a feed only ships a teaser
+* 📄 Open-Access (Unpaywall) & 🎓 Scholar links per paper
 * ⭐ Persistent reading list with notes/#tags and RIS export
 * 🧾 DOI & CrossRef integration for citation metadata
 * 📚 Built-in journal catalog for one-click feed selection

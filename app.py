@@ -367,13 +367,19 @@ _STOPWORDS = set((
 ).split())
 
 # Citation-/Boilerplate-Präfix vieler Verlags-Feeds entfernen, z. B.
-# "…Psychological Science, Volume 9, Issue 2, April-June 2026. <Abstract>"
-_CITATION = re.compile(r"^.{0,220}?\bvolume\s+\d+.{0,120}?\.\s+", re.I)
+# "…Psychological Science, Volume 9, Issue 2, April-June 2026. <Abstract>" oder
+# "Journal of Social and Personal Relationships, Ahead of Print. <Abstract>"
+_CITATION = re.compile(
+    r"^.{0,200}?\b(?:volume\s+\d+|ahead of print|early\s?view|online version of record|"
+    r"advance online publication)\b.{0,160}?\.\s+", re.I)
 _NOISE = re.compile(r"\b(ahead of print|early ?view|online version of record|advance online publication)\b", re.I)
 
+def strip_citation(text):
+    """Entfernt den Verlags-Zitations-Präfix am Anfang eines Abstracts (für Anzeige)."""
+    return _CITATION.sub("", (text or ""), count=1).strip()
+
 def _tok(text):
-    t = (text or "").lower()
-    t = _CITATION.sub("", t, count=1)   # Journal-Zitation am Anfang weg
+    t = strip_citation((text or "").lower())   # Journal-Zitation am Anfang weg
     t = _NOISE.sub(" ", t)
     return {w for w in re.findall(r"[a-zäöüß]{4,}", t) if w not in _STOPWORDS}
 
@@ -449,7 +455,7 @@ def fetch_one_feed(feed_cfg, include_res, exclude_res, max_items):
             title = e.get("title","").strip()
             link  = e.get("link","")
             raw_summary = e.get("summary", "") or e.get("description", "") or ""
-            summary_raw = clean_html(raw_summary)
+            summary_raw = strip_citation(clean_html(raw_summary))   # Verlags-Zitat-Präfix weg
             authors_display, authors_full = extract_authors_from_feedentry(e)
             if summary_raw.strip() in {".", ""}:
                 summary_raw = ""
@@ -459,13 +465,17 @@ def fetch_one_feed(feed_cfg, include_res, exclude_res, max_items):
             iid = make_item_id(name, link, title)
             seen_rows.append((iid, name, link, title))
 
-            # DOI & kleine Stats
-            doi = find_doi(title, summary_raw)
-            stats = extract_stats(summary_raw)
+            # DOI bestimmen (Feed-Text oder per Titelsuche) …
+            doi = find_doi(title, summary_raw) or (find_doi_via_crossref(title) if title else None)
+            # … und bei nur angerissenem Abstract den vollen über /works/{doi} nachladen
+            truncated = (not summary_raw) or len(summary_raw) < 350 \
+                or summary_raw.rstrip().endswith(("…", "..."))
+            if truncated and doi:
+                full = crossref_abstract(doi)
+                if len(full) > len(summary_raw):
+                    summary_raw = full
 
-            # Falls kein DOI, Crossref versuchen
-            if not doi and title:
-                doi = find_doi_via_crossref(title)
+            stats = extract_stats(summary_raw)
 
             # Highlight terms
             highlight_regexes = include_res or []
@@ -588,30 +598,51 @@ def probe_feed(url: str):
         return False, 0, str(ex)
     
 
-def find_doi_via_crossref(title):
-    if not title.strip():
-        return None
+def _jats_to_text(s):
+    """CrossRef-Abstract (JATS/HTML) → sauberer Text."""
+    if not s:
+        return ""
+    txt = re.sub(r"\s+", " ", BeautifulSoup(s, "html.parser").get_text(" ")).strip()
+    return re.sub(r"^abstract[:\s]+", "", txt, flags=re.I)   # führendes "Abstract" weg
+
+def crossref_by_title(title):
+    """{doi, abstract} per Titelsuche (gecacht). Leeres Dict, wenn nichts gefunden."""
+    if not title or not title.strip():
+        return {}
     key = f"title:{hashlib.sha1(title.encode()).hexdigest()}"
     hit = cache_get(key)
-    if hit:
-        return hit.get("doi")
-
+    if hit is not None:
+        return hit
+    out = {}
     try:
         cr = requests.get(
             "https://api.crossref.org/works",
-            params={"query.title": title, "rows": 1},
+            params={"query.title": title, "rows": 1, "select": "DOI,abstract"},
             headers={"User-Agent": USER_AGENT},
-            timeout=3
+            timeout=5
         )
         if cr.ok:
-            data = cr.json()
-            items = data.get("message", {}).get("items", [])
+            items = cr.json().get("message", {}).get("items", [])
             if items:
-                doi = items[0].get("DOI")
-                cache_put(key, {"doi": doi})
-                return doi
+                out = {"doi": items[0].get("DOI"),
+                       "abstract": _jats_to_text(items[0].get("abstract") or "")}
+        cache_put(key, out)
     except Exception:
         pass
+    return out
+
+def find_doi_via_crossref(title):
+    return (crossref_by_title(title) or {}).get("doi")
+
+def crossref_abstract(doi):
+    """Vollständiger Abstract zu einer DOI über CrossRef (gecacht); '' wenn keiner."""
+    if not doi:
+        return ""
+    try:
+        cr = fetch_crossref(doi)
+        return _jats_to_text((cr.get("message") or {}).get("abstract") or "")
+    except Exception:
+        return ""
 
 def extract_authors_from_feedentry(e):
     """Return (authors_display, authors_full) from a feedparser entry."""
@@ -1176,6 +1207,7 @@ def start_scheduler():
         from apscheduler.schedulers.background import BackgroundScheduler
         sched = BackgroundScheduler(daemon=True)
         sched.add_job(prefetch_job, "interval", minutes=CACHE_MINUTES)
+        sched.add_job(prefetch_job, "date")   # einmal direkt beim Start (wärmt Cache/Abstracts)
         sched.start()
         app.logger.info("Scheduler started")
 
