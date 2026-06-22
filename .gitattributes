@@ -1,0 +1,4 @@
+# Zeilenenden konsistent halten – wichtig für Cross-Platform-Start
+* text=auto
+*.sh   text eol=lf
+*.bat  text eol=crlf
