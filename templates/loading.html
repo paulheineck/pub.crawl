@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>readr lädt …</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
+  <script>
+    // Theme früh setzen (vermeidet Flackern)
+    (function(){ try { const s = localStorage.getItem('theme'); if (s) document.documentElement.dataset.theme = s; } catch(e){} })();
+  </script>
+  <style>
+    body { display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+    .splash { text-align: center; max-width: 440px; padding: 2rem; }
+    .logo { font-size: 2.4rem; font-weight: 700; margin: 0; }
+    .spinner {
+      width: 48px; height: 48px; margin: 1.8rem auto;
+      border-radius: 50%;
+      border: 4px solid var(--pico-muted-border-color, rgba(127,127,127,.3));
+      border-top-color: var(--pico-primary, #1095c1);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .msg { min-height: 1.4em; transition: opacity .3s ease; color: var(--pico-color, inherit); }
+    .hint { font-size: .82rem; color: var(--pico-muted-color, #999); margin-top: .4rem; }
+  </style>
+</head>
+<body>
+  <main class="splash">
+    <p class="logo">📰 readr</p>
+    <div class="spinner" role="status" aria-label="lädt"></div>
+    <p class="msg" id="msg">Hole die neuesten Paper …</p>
+    <p class="hint">Beim ersten Start dauert das etwas – Abstracts &amp; Autoren werden geladen.</p>
+  </main>
+  <script>
+    const msgs = [
+      'Hole die neuesten Paper …',
+      'Lade Abstracts &amp; Autoren …',
+      'Räume Verlags-Kram weg …',
+      'Mische deinen Stapel …',
+      'Gleich fertig …'
+    ];
+    let i = 0;
+    const el = document.getElementById('msg');
+    setInterval(() => {
+      i = (i + 1) % msgs.length;
+      el.style.opacity = 0;
+      setTimeout(() => { el.innerHTML = msgs[i]; el.style.opacity = 1; }, 300);
+    }, 2200);
+
+    async function poll() {
+      try {
+        const r = await fetch('/ready');
+        const j = await r.json();
+        if (j.ready) { location.replace('/'); return; }
+      } catch (e) {}
+      setTimeout(poll, 1500);
+    }
+    setTimeout(poll, 1500);
+  </script>
+</body>
+</html>

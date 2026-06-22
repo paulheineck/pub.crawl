@@ -1,57 +1,36 @@
 #!/usr/bin/env bash
-# ---------------------------------------
-#  Research Dashboard - Local Startup
-# ---------------------------------------
-
 cd "$(dirname "$0")" || exit 1
+clear
+printf "\n  📰  readr wird gestartet …\n\n"
 
-echo "---------------------------------------"
-echo "  Research Dashboard - Local Startup"
-echo "---------------------------------------"
-echo
-
-# 0) Python prüfen
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "[Error] python3 nicht gefunden. Bitte installieren."
-  exit 1
-fi
-
-# 1) Virtuelle Umgebung prüfen oder anlegen
+# 1) Virtuelle Umgebung (einmalig)
 if [ ! -d ".venv" ]; then
-  echo "[Setup] Erstelle virtuelle Umgebung ..."
-  python3 -m venv .venv || {
-    echo "[Error] venv konnte nicht erstellt werden (python3-venv installiert?)"
-    exit 1
-  }
+  echo "     Richte Umgebung ein (einmalig, kann etwas dauern) …"
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "  ❌ python3 nicht gefunden (python3-venv installieren)."; read -r -p "  Enter zum Beenden"; exit 1
+  fi
+  python3 -m venv .venv || { echo "  ❌ venv fehlgeschlagen (python3-venv installiert?)"; read -r -p "  Enter"; exit 1; }
 fi
-
-# 2) Aktivieren
-# shellcheck source=/dev/null
 source .venv/bin/activate
 
-# 3) Dependencies nur einmal installieren
-if [ ! -f ".venv/installed.flag" ]; then
-  echo "[Setup] Installiere Dependencies ..."
-  python3 -m pip install --upgrade pip
-  python3 -m pip install -r requirements.txt
-  touch .venv/installed.flag
-fi
+# 2) Abhängigkeiten (leise)
+python3 -m pip install -q --upgrade pip >/dev/null 2>&1
+python3 -m pip install -q -r requirements.txt >/dev/null 2>&1
 
-# 4) Browser öffnen
-URL="http://127.0.0.1:5000"
-echo "[Info] Öffne Dashboard im Browser ..."
-if command -v open >/dev/null; then
-  open "$URL"
-elif command -v xdg-open >/dev/null; then
-  xdg-open "$URL"
-fi
+# 3) Server im Hintergrund starten
+echo "     Starte Server …"
+python3 app.py >/dev/null 2>&1 &
+SERVER_PID=$!
+trap "kill $SERVER_PID 2>/dev/null" EXIT
 
-# 5) Flask-App starten
-echo "[Run] Starte Flask Server ..."
-python3 app.py
+# 4) Warten bis der Port bereit ist (max ~30 s)
+for _ in $(seq 1 60); do
+  if (exec 3<>/dev/tcp/127.0.0.1/5000) 2>/dev/null; then exec 3>&-; break; fi
+  sleep 0.5
+done
 
-# 6) Versionen anzeigen
-echo
-echo "[Info] Python-Pakete:"
-python3 -c "import yaml, flask; print('  PyYAML', yaml.__version__, '| Flask', flask.__version__)"
-echo "---------------------------------------"
+# 5) Browser öffnen (readr zeigt dann selbst eine Lade-Animation)
+printf "\n  ✅  readr läuft auf http://127.0.0.1:5000\n\n"
+( command -v xdg-open >/dev/null && xdg-open http://127.0.0.1:5000 ) 2>/dev/null
+echo "  Dieses Fenster offen lassen – schließen (oder Strg+C) beendet readr."
+wait $SERVER_PID

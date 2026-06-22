@@ -1,4 +1,4 @@
-import os, re, time, sqlite3, hashlib, datetime as dt, pathlib, traceback, shutil, math
+import os, re, time, sqlite3, hashlib, datetime as dt, pathlib, traceback, shutil, math, threading
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape as xml_escape
 from collections import Counter
@@ -438,6 +438,31 @@ def clear_feed_cache():
     _FEED_CACHE["bucket"] = None
     _FEED_CACHE["items"] = None
 
+# Hintergrund-Fetch, damit der erste (kalte) Aufruf nicht blockt, sondern eine
+# Lade-Animation zeigen kann.
+_fetch_lock = threading.Lock()
+_fetching = False
+
+def feeds_ready():
+    return _FEED_CACHE["items"] is not None
+
+def ensure_fetch():
+    """Stößt einen Hintergrund-Fetch an, falls der Cache kalt ist (idempotent)."""
+    global _fetching
+    with _fetch_lock:
+        if _fetching or feeds_ready():
+            return
+        _fetching = True
+    def _run():
+        global _fetching
+        try:
+            fetch_all_feeds(load_cfg())
+        except Exception:
+            app.logger.error("Background fetch failed\n%s", traceback.format_exc())
+        finally:
+            _fetching = False
+    threading.Thread(target=_run, daemon=True).start()
+
 def cached_feed_errors():
     """Feed-Fehler aus dem letzten Fetch (ohne erneutes Laden); leer wenn kein Cache."""
     items = _FEED_CACHE.get("items") or []
@@ -805,6 +830,12 @@ def index():
         resp.set_cookie("last_seen", dt.datetime.now(dt.timezone.utc).isoformat(), max_age=60*60*24*90)
         return resp
     else:
+        # Erster (kalter) Start mit Feeds: nicht blockieren, sondern Lade-Animation
+        # zeigen und im Hintergrund holen. Die Seite pollt /ready und lädt dann neu.
+        if cfg.get("feeds") and not feeds_ready():
+            ensure_fetch()
+            return render_template("loading.html",
+                                   now=dt.datetime.now().strftime("%Y-%m-%d %H:%M"))
         # feeds → flach + dedup + shuffle + Gelesene/Sterne raus
         all_feeds = fetch_all_feeds(cfg)
         read_ids = get_read_ids()
@@ -862,6 +893,13 @@ def index():
     resp.set_cookie("last_seen", dt.datetime.now(dt.timezone.utc).isoformat(), max_age=60*60*24*90)
     resp.set_cookie("sort_pref", sort, max_age=60*60*24*365)
     return resp
+
+@app.get("/ready")
+def route_ready():
+    """Sagt der Lade-Animation, ob die Feeds fertig geholt sind (stößt sonst neu an)."""
+    if not feeds_ready():
+        ensure_fetch()
+    return jsonify({"ready": feeds_ready()})
 
 
 
@@ -1260,7 +1298,10 @@ def export_starred_ris():
 def prefetch_job():
     try:
         cfg = load_cfg()
-        clear_feed_cache()
+        # Cache NICHT nullen – fetch_all_feeds refetcht ohnehin beim Zeit-Bucket-
+        # Wechsel und behält bis dahin die alten Daten (kein kalter Lade-Screen
+        # mitten in der Sitzung). Nur die Bucket-Marke zurücksetzen erzwingt frisch.
+        _FEED_CACHE["bucket"] = None
         _ = fetch_all_feeds(cfg)
         app.logger.info("Prefetch OK")
     except Exception as ex:

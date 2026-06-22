@@ -68,9 +68,9 @@ bash "start Mac.sh"
 bash "start Linux.sh"
 ```
 
-These automatically create the virtual environment (if needed), install dependencies, and start the Flask app.
+These automatically set up the virtual environment (if needed), install dependencies, wait until the server is ready, and open your browser — readr then shows a loading screen while it fetches the latest papers on first start. Keep the launcher window open; closing it stops readr.
 
-Then open your browser at
+You can also start it manually and open
 👉 [http://localhost:5000](http://localhost:5000)
 
 Your personal database (`dashboard.db`) and config (`config.yaml`) will be created automatically on first run.
@@ -169,6 +169,6 @@ apscheduler
 
 ## 🧑‍💻 License & Credits
 
-MIT License © 2025 [Paul Heineck](https://github.com/paulheineck)
+MIT License © 2026 [Paul Heineck](https://github.com/paulheineck)
 
 Built with ❤️ for researchers who want to stay up to date — without the noise.

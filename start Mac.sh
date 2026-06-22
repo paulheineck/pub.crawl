@@ -1,55 +1,35 @@
 #!/usr/bin/env bash
+cd "$(dirname "$0")" || exit 1
+clear
+printf "\n  📰  readr wird gestartet …\n\n"
 
-# Titel (ersetzt das Windows-"title")
-echo "---------------------------------------"
-echo "  Research Dashboard - Local Startup"
-echo "---------------------------------------"
-echo
-
-# In Script-Verzeichnis wechseln (Äquivalent zu cd /d "%~dp0")
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR" || exit 1
-
-# 1) Virtuelle Umgebung prüfen oder anlegen
+# 1) Virtuelle Umgebung (einmalig)
 if [ ! -f ".venv/bin/activate" ]; then
-    echo "[Setup] Erstelle virtuelle Umgebung ..."
-    PYTHON_BIN="$(command -v python3 || command -v python)"
-
-    if [ -z "$PYTHON_BIN" ]; then
-        echo "[Fehler] Python nicht gefunden."
-        exit 1
-    fi
-
-    "$PYTHON_BIN" -m venv .venv
+  echo "     Richte Umgebung ein (einmalig, kann etwas dauern) …"
+  PY="$(command -v python3 || command -v python)"
+  if [ -z "$PY" ]; then echo "  ❌ Python nicht gefunden."; read -r -p "  Enter zum Beenden"; exit 1; fi
+  "$PY" -m venv .venv
 fi
-
-# Aktivieren
 source .venv/bin/activate
 
-# 2) Dependencies aktualisieren
-echo "[Setup] Aktualisiere Pip und Packages ..."
-python -m pip install --upgrade pip > /dev/null
-if [ -f "requirements.txt" ]; then
-    python -m pip install -r requirements.txt > /dev/null
-fi
+# 2) Abhängigkeiten (leise)
+python -m pip install -q --upgrade pip >/dev/null 2>&1
+python -m pip install -q -r requirements.txt >/dev/null 2>&1
 
-# 3) Browser öffnen
-echo "[Info] Öffne Dashboard im Browser ..."
-open http://127.0.0.1:5000
+# 3) Server im Hintergrund starten
+echo "     Starte Server …"
+python app.py >/dev/null 2>&1 &
+SERVER_PID=$!
+trap "kill $SERVER_PID 2>/dev/null" EXIT
 
-# 4) Flask-App starten
-echo "[Run] Starte Flask Server ..."
-python app.py
+# 4) Warten bis der Port bereit ist (max ~30 s)
+for _ in $(seq 1 60); do
+  if (exec 3<>/dev/tcp/127.0.0.1/5000) 2>/dev/null; then exec 3>&-; break; fi
+  sleep 0.5
+done
 
-# 5) Ausgabe der wichtigsten Versionen
-echo
-echo "[Info] Python-Pakete:"
-python - <<EOF
-import yaml, flask
-print("  PyYAML", yaml.__version__, "| Flask", flask.__version__)
-EOF
-
-echo "---------------------------------------"
-
-# Pause-Äquivalent (optional)
-read -p "Drücke Enter zum Beenden..."
+# 5) Browser öffnen (readr zeigt dann selbst eine Lade-Animation)
+printf "\n  ✅  readr läuft auf http://127.0.0.1:5000\n\n"
+open http://127.0.0.1:5000 2>/dev/null
+echo "  Dieses Fenster offen lassen – schließen (oder Strg+C) beendet readr."
+wait $SERVER_PID
