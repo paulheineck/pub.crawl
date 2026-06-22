@@ -465,15 +465,20 @@ def fetch_one_feed(feed_cfg, include_res, exclude_res, max_items):
             iid = make_item_id(name, link, title)
             seen_rows.append((iid, name, link, title))
 
-            # DOI bestimmen (Feed-Text oder per Titelsuche) …
+            # DOI bestimmen (Feed-Text oder per Titelsuche)
             doi = find_doi(title, summary_raw) or (find_doi_via_crossref(title) if title else None)
-            # … und bei nur angerissenem Abstract den vollen über /works/{doi} nachladen
+            # Bei angerissenem Abstract ODER kaputten Autoren (Affiliations-Ziffern,
+            # leer) normalisierte Metadaten von CrossRef holen – eine Quelle für alle Feeds.
             truncated = (not summary_raw) or len(summary_raw) < 350 \
                 or summary_raw.rstrip().endswith(("…", "..."))
-            if truncated and doi:
-                full = crossref_abstract(doi)
-                if len(full) > len(summary_raw):
-                    summary_raw = full
+            authors_bad = (not authors_display) or bool(re.search(r"\d", authors_display))
+            if doi and (truncated or authors_bad):
+                meta = crossref_meta(doi)
+                if len(meta["abstract"]) > len(summary_raw):
+                    summary_raw = meta["abstract"]
+                if meta["authors_display"]:
+                    authors_display = meta["authors_display"]
+                    authors_full = meta["authors_full"]
 
             stats = extract_stats(summary_raw)
 
@@ -634,15 +639,26 @@ def crossref_by_title(title):
 def find_doi_via_crossref(title):
     return (crossref_by_title(title) or {}).get("doi")
 
-def crossref_abstract(doi):
-    """Vollständiger Abstract zu einer DOI über CrossRef (gecacht); '' wenn keiner."""
+def crossref_meta(doi):
+    """{abstract, authors_display, authors_full} aus CrossRef /works/{doi} (gecacht).
+    Eine Quelle für alle Feeds → unabhängig von den Macken der einzelnen RSS-Feeds."""
+    out = {"abstract": "", "authors_display": "", "authors_full": ""}
     if not doi:
-        return ""
+        return out
     try:
-        cr = fetch_crossref(doi)
-        return _jats_to_text((cr.get("message") or {}).get("abstract") or "")
+        msg = (fetch_crossref(doi) or {}).get("message") or {}
     except Exception:
-        return ""
+        return out
+    out["abstract"] = _jats_to_text(msg.get("abstract") or "")
+    names = []
+    for a in msg.get("author", []) or []:
+        nm = " ".join(filter(None, [a.get("given"), a.get("family")])).strip()
+        if nm:
+            names.append(nm)
+    if names:
+        out["authors_display"] = ", ".join(names[:3]) + (" et al." if len(names) > 3 else "")
+        out["authors_full"] = ", ".join(names)
+    return out
 
 def extract_authors_from_feedentry(e):
     """Return (authors_display, authors_full) from a feedparser entry."""
@@ -665,13 +681,17 @@ def extract_authors_from_feedentry(e):
     # --- 🔽 Affiliations & Sonderzeichen entfernen ---
     clean = []
     for n in names:
+        # Affiliations kleben bei SAGE/Wiley oft mit Ziffern am Namen:
+        # "Lin Fu112496Beijing University…" → am ersten Ziffern-Block abschneiden
+        n = re.split(r"\d", n, 1)[0]
         # Entfernt Klammerteile (z. B. "(University of X)")
         n = re.sub(r"\s*\([^)]*\)", "", n)
         # Entfernt nachgestellte Komma-Institutionen
         n = re.sub(r",\s*(Department|Faculty|Institute|University|College|School|Center|Centre|Hospital|Research|Lab).*", "", n, flags=re.I)
         # Kürzt Leerzeichen
         n = re.sub(r"\s+", " ", n).strip()
-        if n:
+        # Fragmente verwerfen, die offensichtlich keine Namen sind (Institutionswörter)
+        if n and not re.search(r"\b(University|Department|Institute|Faculty|College|School|Centre|Center|Hospital|Research|Brussels|Italy|China)\b", n, re.I):
             clean.append(n)
     names = clean
 
