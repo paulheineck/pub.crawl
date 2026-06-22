@@ -29,6 +29,7 @@ MAX_WORKERS = 6
 
 MIN_REL = 10        # ab so vielen Likes UND Skips ist das Relevanz-Ranking verfügbar
 MAX_SKIPS = 2000    # so viele geskippte Artikel (mit Text) werden vorgehalten
+OPENALEX_MAILTO = "readr@users.noreply.github.com"   # höflicher OpenAlex-Pool
 
 # Fallback, falls weder config.yaml noch config.example.yaml existieren
 DEFAULT_CFG = {
@@ -473,7 +474,7 @@ def fetch_one_feed(feed_cfg, include_res, exclude_res, max_items):
                 or summary_raw.rstrip().endswith(("…", "..."))
             authors_bad = (not authors_display) or bool(re.search(r"\d", authors_display))
             if doi and (truncated or authors_bad):
-                meta = crossref_meta(doi)
+                meta = fetch_meta(doi)
                 if len(meta["abstract"]) > len(summary_raw):
                     summary_raw = meta["abstract"]
                 if meta["authors_display"]:
@@ -659,6 +660,50 @@ def crossref_meta(doi):
         out["authors_display"] = ", ".join(names[:3]) + (" et al." if len(names) > 3 else "")
         out["authors_full"] = ", ".join(names)
     return out
+
+def openalex_meta(doi):
+    """{abstract, authors_display, authors_full} aus OpenAlex (gecacht).
+    Fallback v. a. für Taylor & Francis, die nichts an CrossRef liefern."""
+    out = {"abstract": "", "authors_display": "", "authors_full": ""}
+    if not doi:
+        return out
+    key = f"oa:{doi}"
+    hit = cache_get(key)
+    if hit is None:
+        hit = {}
+        try:
+            r = http_get(f"https://api.openalex.org/works/doi:{doi}?mailto={OPENALEX_MAILTO}", timeout=8)
+            if r.ok:
+                j = r.json()
+                inv = j.get("abstract_inverted_index") or {}
+                ab = ""
+                if inv:
+                    ws = sorted((pos, w) for w, ps in inv.items() for pos in ps)
+                    ab = " ".join(w for _, w in ws)
+                names = [a["author"]["display_name"] for a in j.get("authorships", [])
+                         if a.get("author", {}).get("display_name")]
+                hit = {"abstract": ab, "names": names}
+            cache_put(key, hit)
+        except Exception:
+            hit = {}
+    names = (hit or {}).get("names") or []
+    out["abstract"] = (hit or {}).get("abstract") or ""
+    if names:
+        out["authors_display"] = ", ".join(names[:3]) + (" et al." if len(names) > 3 else "")
+        out["authors_full"] = ", ".join(names)
+    return out
+
+def fetch_meta(doi):
+    """Abstract + saubere Autoren über eine DOI – CrossRef primär, OpenAlex als Fallback."""
+    m = crossref_meta(doi)
+    if not m["abstract"] or not m["authors_display"]:
+        oa = openalex_meta(doi)
+        if len(oa["abstract"]) > len(m["abstract"]):
+            m["abstract"] = oa["abstract"]
+        if not m["authors_display"] and oa["authors_display"]:
+            m["authors_display"] = oa["authors_display"]
+            m["authors_full"] = oa["authors_full"]
+    return m
 
 def extract_authors_from_feedentry(e):
     """Return (authors_display, authors_full) from a feedparser entry."""
