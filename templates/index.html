@@ -41,10 +41,10 @@
     .meta a.meta-link { margin-left:.5rem; font-size:.85rem; text-decoration: underline; }
 
     .item {
-      border: 1px solid var(--muted-border-color);
+      border: 1px solid var(--pico-muted-border-color, rgba(127,127,127,.28));
       border-radius: 14px;
       padding: 1rem;
-      background: var(--muted-color-bg);
+      background: var(--pico-card-background-color, var(--pico-background-color, transparent));
       transition: transform .06s ease, background .2s ease, box-shadow .2s ease;
     }
     .item + .item { margin-top: .8rem; }
@@ -146,12 +146,19 @@
 #help table { width: 100%; }
 #help td { padding: .3rem .4rem; }
 
-/* Header-Extras */
-.streak {
-  font-size: .85rem; padding: .15rem .6rem; border-radius: 999px; white-space: nowrap;
-  background: color-mix(in hsl, #ff9500 20%, var(--muted-color-bg));
-  border: 1px solid color-mix(in hsl, #ff9500 45%, transparent);
+/* Status-Leiste (Streak + verbleibende Anzahl) */
+#statusbar {
+  display: flex; justify-content: center; margin: .4rem 0 .7rem 0;
 }
+#statusbar #statustext {
+  font-size: .85rem; color: var(--muted-color); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding: .3rem .9rem; border-radius: 999px;
+  background: var(--muted-color-bg);
+  border: 1px solid var(--muted-border-color);
+}
+#statusbar[hidden] { display: none; }
+
 .hbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
   height: 2.4rem; padding: 0 .7rem; box-sizing: border-box;
@@ -173,15 +180,38 @@
   color: var(--primary); cursor: pointer; font-size: .85rem; text-decoration: underline;
 }
 
-/* Notiz in der Leseliste */
-textarea.note {
-  width: 100%; margin: .4rem 0 0 0; padding: .4rem .6rem;
-  font-size: .9rem; line-height: 1.35; resize: none; overflow: hidden;
-  border-radius: 8px; border: 1px solid var(--muted-border-color);
-  background: var(--muted-color-bg); color: inherit;
+/* Notiz in der Leseliste – als „Notizzettel" erkennbar */
+.note-wrap { margin: .5rem 0 .2rem 0; }
+.note-label {
+  display: block; font-size: .75rem; font-weight: 600; letter-spacing: .02em;
+  color: #b8c2cc; margin-bottom: .2rem;
 }
+[data-theme="dark"] .note-label { color: #e0b84d; }
+textarea.note {
+  width: 100%; padding: .5rem .7rem;
+  font-size: .9rem; line-height: 1.4; resize: none; overflow: hidden;
+  border-radius: 8px;
+  /* sanftes Notizzettel-Gelb, hell & dunkel */
+  background: #fff9e6; border: 1px solid #f0dca0; color: #3a3320;
+}
+[data-theme="dark"] textarea.note {
+  background: #2a2616; border-color: #4a4327; color: #ece7d2;
+}
+textarea.note::placeholder { color: #b3a06a; }
+[data-theme="dark"] textarea.note::placeholder { color: #8c8158; }
 
-#progress { font-variant-numeric: tabular-nums; }
+/* Müll-Icon in der Ecke (Leseliste) */
+.item-star { position: relative; }
+.trash-btn {
+  position: absolute; top: .55rem; right: .55rem;
+  width: 2rem; height: 2rem; line-height: 1; font-size: 1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid transparent;
+  background: none; color: var(--muted-color); cursor: pointer; opacity: .6;
+  transition: opacity .15s ease, background .15s ease, border-color .15s ease;
+}
+.trash-btn:hover { opacity: 1; background: color-mix(in hsl, #d33 14%, transparent); border-color: color-mix(in hsl, #d33 50%, transparent); }
+.item-star h4 { padding-right: 2.2rem; }   /* Platz für das Icon */
 
 /* Onboarding (keine Feeds abonniert) */
 .onboard {
@@ -205,10 +235,9 @@ textarea.note {
 @keyframes fall { to { transform: translateY(106vh) rotate(560deg); opacity: 1; } }
 
 /* Stapel-Modus: echter Kartenstapel */
-body.deck #progress {
-  position: fixed; left: 0; right: 0; bottom: .9rem; z-index: 40;
-  text-align: center; margin: 0; font-size: .9rem;
-  color: var(--muted-color); pointer-events: none;
+body.deck #statusbar {
+  position: fixed; left: 0; right: 0; bottom: 1rem; z-index: 40;
+  margin: 0; pointer-events: none;
 }
 body.deck #list { position: relative; min-height: 62vh; padding-bottom: 2rem; }
 body.deck #list.empty { min-height: 0; }
@@ -255,10 +284,8 @@ body.deck .item.d3::after, body.deck .item.d4::after {
 <body>
   <main class="container">
     <header>
-      <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
-        <h1>Readr</h1>
-        <span id="streak" class="streak" title="Tage in Folge aktiv · heute gesichtet"
-              {% if not streak and not today_count %}hidden{% endif %}>🔥 <span id="streakN">{{ streak }}</span> · heute <span id="todayN">{{ today_count }}</span></span>
+      <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+        <h1>📰 readr</h1>
         <nav>
           <a href="/?mode=feeds"   class="{{ 'contrast' if mode=='feeds'   else '' }}">Feed</a>
           <a href="/?mode=stars"   class="{{ 'contrast' if mode=='stars'   else '' }}">⭐ Leseliste</a>
@@ -310,11 +337,14 @@ body.deck .item.d3::after, body.deck .item.d4::after {
 
     <h3 style="margin:1rem 0 .6rem 0;">{{ list_title }}</h3>
     {% if mode == 'stars' %}
-      <a href="/export/starred.ris" class="secondary outline">⬇️ Exportieren</a>
+      <a href="/export/starred.ris" class="secondary outline"
+         title="Lädt deine ganze Leseliste als RIS-Datei – direkt importierbar in Zotero, EndNote, Citavi, Mendeley …">⬇️ Exportieren</a>
     {% endif %}
 
     {% if mode == 'feeds' %}
-      <div id="progress" class="meta" style="margin:.2rem 0 .6rem 0;"></div>
+      <div id="statusbar" data-streak="{{ streak }}" data-today="{{ today_count }}">
+        <span id="statustext"></span>
+      </div>
     {% endif %}
 
     <div id="done" hidden>
@@ -324,7 +354,14 @@ body.deck .item.d3::after, body.deck .item.d4::after {
 
     <section id="list">
       {% for it in entries %}
-      <div class="item" data-search="{{ (it.title ~ ' ' ~ it.summary)|lower }}">
+      <div class="item {% if mode == 'stars' %}item-star{% endif %}" data-search="{{ (it.title ~ ' ' ~ it.summary)|lower }}">
+        {% if mode == 'stars' %}
+        <button class="trash-btn" title="Aus der Leseliste entfernen"
+          data-id="{{ it.id }}" data-title="{{ it.title }}" data-link="{{ it.link }}"
+          data-feed="{{ it.journal }}" data-date="{{ it.date }}" data-summary="{{ it.summary }}"
+          data-doi="{{ it.doi or '' }}" data-authors="{{ it.authors or '' }}"
+          data-authors_full="{{ it.authors_full or '' }}" data-note="{{ it.note or '' }}">🗑</button>
+        {% endif %}
         <h4 style="margin:0 0 .25rem 0;">
           <a href="{{ it.link }}" target="_blank" rel="noopener">{{ it.title_html|safe }}</a>
         </h4>
@@ -341,13 +378,6 @@ body.deck .item.d3::after, body.deck .item.d4::after {
           {% if it.doi %}
             <a class="meta-link" href="/dl/ris?doi={{ it.doi }}&title={{ it.title|urlencode }}">Cite (RIS)</a>
           {% endif %}
-          {% if mode == 'stars' %}
-            <button class="secondary outline remove-btn"
-              data-id="{{ it.id }}" data-title="{{ it.title }}" data-link="{{ it.link }}"
-              data-feed="{{ it.journal }}" data-date="{{ it.date }}" data-summary="{{ it.summary }}"
-              data-doi="{{ it.doi or '' }}" data-authors="{{ it.authors or '' }}"
-              data-authors_full="{{ it.authors_full or '' }}" data-note="{{ it.note or '' }}">🗑 Entfernen</button>
-          {% endif %}
         </p>
 
         {% if it.summary %}
@@ -356,8 +386,11 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         {% endif %}
 
         {% if mode == 'stars' %}
-          <textarea class="note" data-id="{{ it.id }}" rows="1"
-            placeholder="📝 Notiz / #tags …">{{ it.note }}</textarea>
+          <div class="note-wrap">
+            <span class="note-label">📝 Deine Notiz</span>
+            <textarea class="note" data-id="{{ it.id }}" rows="1"
+              placeholder="Notiz oder #tags hinzufügen …">{{ it.note }}</textarea>
+          </div>
         {% endif %}
         <div class="chips">
           {% if it.why %}<span class="chip rel" title="Passt zu deinen Interessen">🧠 {{ it.why|join(', ') }}</span>{% endif %}
@@ -443,26 +476,30 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       body: new URLSearchParams(data)
     });
 
-    // ---- Live-Zähler: Streak/"heute" + Relevanz-Freischaltung (ohne Reload) ----
+    // ---- Live-Zähler: Streak/"heute" + verbleibende Anzahl in einer Leiste ----
     let _streak  = {{ streak|int }};
     let _today   = {{ today_count|int }};
     let _liked   = {{ n_liked|int }};
     let _skipped = {{ n_skipped|int }};
+    let _remaining = 0, _searching = false;
     const MIN_REL = {{ min_rel|int }};
 
-    function renderStreak() {
-      const el = document.getElementById('streak');
-      if (!el) return;
-      document.getElementById('streakN').textContent = _streak;
-      document.getElementById('todayN').textContent = _today;
-      el.hidden = (_streak === 0 && _today === 0);
+    function renderStatus() {
+      const bar = document.getElementById('statusbar');
+      if (!bar) return;
+      const parts = [];
+      if (_streak > 0 || _today > 0) parts.push(`🔥 ${_streak} · heute ${_today}`);
+      if (_searching) parts.push(`${_remaining} Treffer`);
+      else if (_remaining) parts.push(`noch ${_remaining}`);
+      document.getElementById('statustext').textContent = parts.join('   ·   ');
+      bar.hidden = parts.length === 0;
     }
     function bumpToday(delta) {
       const wasZero = _today === 0;
       _today = Math.max(0, _today + delta);
       if (wasZero && _today > 0) _streak += 1;                     // erster Beitrag heute
       else if (!wasZero && _today === 0) _streak = Math.max(0, _streak - 1);
-      renderStreak();
+      renderStatus();
     }
     function checkRel() {
       const note = document.getElementById('relNote');
@@ -577,8 +614,11 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         btn.addEventListener('click', () => skipCard(btn)));
     }
     if (MODE === 'stars') {
-      document.querySelectorAll('.remove-btn').forEach(btn =>
-        btn.addEventListener('click', () => removeFromList(btn)));
+      document.querySelectorAll('.trash-btn').forEach(btn =>
+        btn.addEventListener('click', () => {
+          const t = (btn.dataset.title || 'diesen Eintrag').slice(0, 60);
+          if (confirm(`„${t}" wirklich aus der Leseliste entfernen?`)) removeFromList(btn);
+        }));
     }
 
     // Keyboard-Shortcuts:  l = Like · d = Skip/Gelesen · j/k = runter/hoch · / = Suche · ? = Hilfe
@@ -617,7 +657,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         case 'j': if (!deck) setCurrent(items[Math.min(idx + 1, items.length - 1)]); break;
         case 'k': if (!deck) setCurrent(items[Math.max(idx - 1, 0)]); break;
         case 'l': cur && cur.querySelector('.choice.like')?.click(); break;
-        case 'd': cur && (cur.querySelector('.choice.skip') || cur.querySelector('.remove-btn'))?.click(); break;
+        case 'd': cur && (cur.querySelector('.choice.skip') || cur.querySelector('.trash-btn'))?.click(); break;
         default: return;
       }
       e.preventDefault();
@@ -631,7 +671,6 @@ body.deck .item.d3::after, body.deck .item.d4::after {
     // ---- Fortschritt · Stapel-Modus · Inbox-Zero ----
     const body = document.body;
     const listEl = document.getElementById('list');
-    const progressEl = document.getElementById('progress');
     const doneEl = document.getElementById('done');
     const viewBtn = document.getElementById('viewBtn');
     const initialCount = visibleItems().length;
@@ -681,8 +720,8 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         document.querySelectorAll('.item').forEach(el => { el.style.height = ''; });
       }
 
-      if (progressEl)
-        progressEl.textContent = searching ? `${n} Treffer` : (n ? `noch ${n}` : '');
+      _remaining = n; _searching = searching;
+      renderStatus();
 
       // Inbox-Zero nur feiern, wenn wirklich durchgearbeitet – NICHT wenn die
       // Suche bloß zu eng gefiltert hat.
@@ -768,8 +807,8 @@ body.deck .item.d3::after, body.deck .item.d4::after {
 
     applyView();
 
-    // Streak/Zähler initial rendern + Relevanz-Hinweis prüfen (auch live nach Swipes)
-    renderStreak();
+    // Status-Leiste initial rendern + Relevanz-Hinweis prüfen (auch live nach Swipes)
+    renderStatus();
     checkRel();
     const relDismiss = document.getElementById('relDismiss');
     if (relDismiss) relDismiss.addEventListener('click', () => {

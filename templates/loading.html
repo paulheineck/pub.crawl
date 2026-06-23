@@ -29,25 +29,9 @@
   <main class="splash">
     <p class="logo">📰 readr</p>
     <div class="spinner" role="status" aria-label="lädt"></div>
-    <p class="msg" id="msg">Hole die neuesten Paper …</p>
-    <p class="hint">Beim ersten Start dauert das etwas – Abstracts &amp; Autoren werden geladen.</p>
+    <p class="msg">Artikel werden geladen …</p>
   </main>
   <script>
-    const msgs = [
-      'Hole die neuesten Paper …',
-      'Lade Abstracts &amp; Autoren …',
-      'Räume Verlags-Kram weg …',
-      'Mische deinen Stapel …',
-      'Gleich fertig …'
-    ];
-    let i = 0;
-    const el = document.getElementById('msg');
-    setInterval(() => {
-      i = (i + 1) % msgs.length;
-      el.style.opacity = 0;
-      setTimeout(() => { el.innerHTML = msgs[i]; el.style.opacity = 1; }, 300);
-    }, 2200);
-
     async function poll() {
       try {
         const r = await fetch('/ready');

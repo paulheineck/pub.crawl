@@ -824,6 +824,7 @@ def index():
             exclude=exclude,
             catalog_groups=catalog_groups,
             feed_errors=cached_feed_errors(),
+            no_feeds=not feeds,
             flash_msg=request.args.get("msg",""),
             mode=mode
         ))
