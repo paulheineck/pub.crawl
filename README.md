@@ -1,8 +1,23 @@
 # 📰 readr — A Minimal Local Research Feed Reader
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
+<!-- Nach dem Zenodo-Release hier den DOI-Badge einsetzen:
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
+
 **readr** is a lightweight, privacy-friendly Flask web app that aggregates journal RSS feeds for academic researchers.
 It lets you **skim, star, and organize** new papers,
 with Open Access and citation tools built right in.
+
+---
+
+## 📸 Screenshots
+
+> _Lege deine Screenshots unter `docs/` ab (z. B. mit Windows: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) — dann erscheinen sie hier._
+
+| Stapelmodus (Feed) | Leseliste |
+|---|---|
+| ![Stapelmodus](docs/feed.png) | ![Leseliste](docs/reading-list.png) |
 
 ---
 
@@ -164,6 +179,35 @@ apscheduler
 * To disable the Tinder-style animations, toggle the setting in “⚙ Einstellungen”.
 * If you ever delete `dashboard.db`, it will automatically regenerate empty on next start.
 * You can safely share your project folder without the database — all local state is recreated.
+
+---
+
+## 📑 Citation
+
+If readr is useful for your work, a citation is appreciated. GitHub shows a
+**“Cite this repository”** button (powered by [`CITATION.cff`](CITATION.cff)).
+
+After minting a DOI via Zenodo (see below), cite as:
+
+```bibtex
+@software{heineck_readr,
+  author  = {Heineck, Paul},
+  title   = {readr — A Minimal Local Research Feed Reader},
+  year    = {2026},
+  url     = {https://github.com/paulheineck/readr},
+  version = {1.0.0},
+  doi     = {10.5281/zenodo.XXXXXXX}
+}
+```
+
+**Get a citable DOI (one-time, ~10 min):**
+
+1. Sign in at [zenodo.org](https://zenodo.org) with your GitHub account.
+2. Go to **Account → GitHub**, find `paulheineck/readr`, and flip the switch **On**.
+3. On GitHub, create a release: **Releases → Draft a new release →** tag `v1.0.0`, title “readr 1.0.0”, publish.
+   - locally: `git tag -a v1.0.0 -m "readr 1.0.0" && git push origin v1.0.0`
+4. Zenodo automatically archives the release and mints a DOI.
+5. Copy the DOI badge from Zenodo into the top of this README and into `CITATION.cff`.
 
 ---
 

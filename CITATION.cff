@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "readr — A Minimal Local Research Feed Reader"
+message: "If you use readr, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: Heineck
+    given-names: Paul
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # ← deine ORCID eintragen
+repository-code: "https://github.com/paulheineck/readr"
+url: "https://github.com/paulheineck/readr"
+abstract: >-
+  readr is a lightweight, privacy-friendly local web app that aggregates
+  journal RSS feeds for researchers. It lets you skim, star, and organize new
+  papers in a swipeable card-stack interface, with full abstracts and clean
+  author metadata pulled from CrossRef/OpenAlex, Open-Access (Unpaywall) and
+  citation tools, a local relevance ranking learned from your likes/skips, and
+  a curated catalog of psychology journal feeds.
+keywords:
+  - current awareness
+  - literature monitoring
+  - feed reader
+  - RSS
+  - psychology
+  - open science
+  - research tools
+license: MIT
+version: "1.0.0"
+date-released: "2026-06-24"
