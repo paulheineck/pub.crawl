@@ -45,6 +45,9 @@ DEFAULT_CFG = {
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("DASHBOARD_SECRET", "dev-secret")  # für Flash/Cookies
+# Templates bei Änderung neu laden, ohne Server-Neustart (F5 reicht beim Stylen)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.jinja_env.auto_reload = True
 
 # Security Headers
 @app.after_request
