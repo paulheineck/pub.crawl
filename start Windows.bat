@@ -1,9 +1,9 @@
 @echo off
-title readr
+title Pub.Crawl
 cd /d "%~dp0"
 cls
 echo.
-echo   📰  readr wird gestartet ...
+echo   🍺  Pub.Crawl wird gestartet ...
 echo.
 
 :: 1) Virtuelle Umgebung (einmalig)
@@ -26,10 +26,10 @@ start "" /b cmd /c "python app.py >nul 2>&1"
 powershell -NoProfile -Command "try{$c=New-Object Net.Sockets.TcpClient;$c.Connect('127.0.0.1',5000);$c.Close();exit 0}catch{exit 1}" >nul 2>&1
 if errorlevel 1 ( timeout /t 1 /nobreak >nul & goto waitloop )
 
-:: 5) Browser oeffnen (readr zeigt dann selbst eine Lade-Animation)
+:: 5) Browser oeffnen (Pub.Crawl zeigt dann selbst eine Lade-Animation)
 echo.
-echo   ✅  readr laeuft auf http://127.0.0.1:5000
+echo   ✅  Pub.Crawl laeuft auf http://127.0.0.1:5000
 start "" http://127.0.0.1:5000
 echo.
-echo   Dieses Fenster offen lassen - schliessen beendet readr.
+echo   Dieses Fenster offen lassen - schliessen beendet Pub.Crawl.
 pause >nul

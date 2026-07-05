@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>Readr</title>
+  <title>Pub.Crawl</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
 
@@ -285,7 +285,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
   <main class="container">
     <header>
       <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
-        <h1>📰 readr</h1>
+        <h1>🍺 Pub.Crawl</h1>
         <nav>
           <a href="/?mode=feeds"   class="{{ 'contrast' if mode=='feeds'   else '' }}">Feed</a>
           <a href="/?mode=stars"   class="{{ 'contrast' if mode=='stars'   else '' }}">⭐ Leseliste</a>
@@ -304,7 +304,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
 
     {% if no_feeds and mode != 'sources' %}
       <article class="onboard">
-        <h3 style="margin-top:0;">👋 Willkommen bei readr!</h3>
+        <h3 style="margin-top:0;">👋 Willkommen bei Pub.Crawl!</h3>
         <p>Du hast noch keine Journals abonniert. Wähle welche aus dem Katalog —
            nach Fachbereich sortiert und sofort einsatzbereit.</p>
         <a href="/?mode=sources" role="button" class="contrast">📚 Journals aus dem Katalog wählen</a>
@@ -324,7 +324,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
     {% if mode == 'feeds' %}
       <article id="relNote" hidden style="border-left:3px solid var(--primary);padding:.7rem .9rem;margin-top:.8rem;">
         🧠 <strong>Relevanz-Ranking ist freigeschaltet!</strong>
-        readr hat aus deinen <span id="relLiked">{{ n_liked }}</span> Likes und
+        Pub.Crawl hat aus deinen <span id="relLiked">{{ n_liked }}</span> Likes und
         <span id="relSkipped">{{ n_skipped }}</span> Skips gelernt, welche Themen dich interessieren,
         und kann den Feed jetzt „Für mich" sortieren — die spannendsten Paper zuerst. Du erkennst es
         am Button oben (🧠) und an den 🧠-Stichwörtern an jeder Karte. Umschalten jederzeit.
@@ -401,6 +401,11 @@ body.deck .item.d3::after, body.deck .item.d4::after {
 
         {% if mode == 'feeds' %}
         <div class="choicebar">
+          <button class="choice skip" data-read="{{ it.id }}"
+            data-title="{{ it.title }}" data-summary="{{ it.summary }}" title="Ausblenden (D)">
+            <svg viewBox="0 0 24 24"><path fill="currentColor"
+              d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.42L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/></svg>
+          </button>
           <button class="choice like"
             data-id="{{ it.id }}"
             data-title="{{ it.title }}"
@@ -414,11 +419,6 @@ body.deck .item.d3::after, body.deck .item.d4::after {
             title="Auf Leseliste (L)">
             <svg viewBox="0 0 24 24"><path fill="currentColor"
               d="M12.1 21.35l-1.1-1.01C5.14 15.24 2 12.39 2 8.98 2 6.24 4.24 4 6.98 4c1.64 0 3.22.76 4.22 2 .99-1.24 2.58-2 4.22-2C18.76 4 21 6.24 21 8.98c0 3.41-3.14 6.26-8.9 11.36l-1 .91z"/></svg>
-          </button>
-          <button class="choice skip" data-read="{{ it.id }}"
-            data-title="{{ it.title }}" data-summary="{{ it.summary }}" title="Ausblenden (D)">
-            <svg viewBox="0 0 24 24"><path fill="currentColor"
-              d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.42L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/></svg>
           </button>
         </div>
         {% endif %}
@@ -563,7 +563,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
       };
       const res = await post('/star', data);
       if (!res.ok) return;
-      hideCard(card, -70);
+      hideCard(card, 70);   // Like → nach rechts (Button rechts)
       bumpToday(+1); _liked += 1; checkRel();
       showToast('⭐ Auf Leseliste', async () => {
         await post('/star', {...data, action: 'off'});
@@ -580,7 +580,7 @@ body.deck .item.d3::after, body.deck .item.d4::after {
         id, title: btn.dataset.title || '', summary: btn.dataset.summary || ''
       });
       if (!res.ok) return;
-      hideCard(card, 70);
+      hideCard(card, -70);   // Dislike → nach links (Button links)
       bumpToday(+1); _skipped += 1; checkRel();
       showToast('✕ Ausgeblendet', async () => {
         await post('/unread', { id });

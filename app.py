@@ -22,14 +22,14 @@ from flask import (
 APP_ROOT = pathlib.Path(__file__).parent.resolve()
 DB_PATH  = APP_ROOT / "dashboard.db"
 CATALOG_PATH = APP_ROOT / "journals.yaml"
-USER_AGENT = "ResearchDashboard/1.0 (+local)"
+USER_AGENT = "Pub.Crawl/1.0 (+local research feed reader)"
 
 CACHE_MINUTES = 10
 MAX_WORKERS = 6
 
 MIN_REL = 10        # ab so vielen Likes UND Skips ist das Relevanz-Ranking verfügbar
 MAX_SKIPS = 2000    # so viele geskippte Artikel (mit Text) werden vorgehalten
-OPENALEX_MAILTO = "readr@users.noreply.github.com"   # höflicher OpenAlex-Pool
+OPENALEX_MAILTO = "pubcrawl@users.noreply.github.com"   # höflicher OpenAlex-Pool
 
 # Fallback, falls weder config.yaml noch config.example.yaml existieren
 DEFAULT_CFG = {
@@ -1114,7 +1114,7 @@ def export_feeds_opml():
     feeds = (load_cfg().get("feeds") or [])
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<opml version="2.0">',
-             '  <head><title>readr feeds</title></head>',
+             '  <head><title>Pub.Crawl feeds</title></head>',
              '  <body>']
     for f in feeds:
         name = xml_escape(f.get("name") or "", {'"': "&quot;"})
@@ -1123,7 +1123,7 @@ def export_feeds_opml():
     lines += ['  </body>', '</opml>']
     data = "\n".join(lines)
     return Response(data, mimetype="text/x-opml",
-                    headers={"Content-Disposition": "attachment; filename=readr-feeds.opml"})
+                    headers={"Content-Disposition": "attachment; filename=pubcrawl-feeds.opml"})
 
 @app.post("/settings/import_opml")
 def settings_import_opml():
@@ -1176,7 +1176,7 @@ def export_state():
     }
     payload = json.dumps(data, ensure_ascii=False, indent=2)
     return Response(payload, mimetype="application/json",
-                    headers={"Content-Disposition": "attachment; filename=readr-state.json"})
+                    headers={"Content-Disposition": "attachment; filename=pubcrawl-state.json"})
 
 @app.post("/settings/import_state")
 def import_state():

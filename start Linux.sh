@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")" || exit 1
 clear
-printf "\n  📰  readr wird gestartet …\n\n"
+printf "\n  🍺  Pub.Crawl wird gestartet …\n\n"
 
 # 1) Virtuelle Umgebung (einmalig)
 if [ ! -d ".venv" ]; then
@@ -29,8 +29,8 @@ for _ in $(seq 1 60); do
   sleep 0.5
 done
 
-# 5) Browser öffnen (readr zeigt dann selbst eine Lade-Animation)
-printf "\n  ✅  readr läuft auf http://127.0.0.1:5000\n\n"
+# 5) Browser öffnen (Pub.Crawl zeigt dann selbst eine Lade-Animation)
+printf "\n  ✅  Pub.Crawl läuft auf http://127.0.0.1:5000\n\n"
 ( command -v xdg-open >/dev/null && xdg-open http://127.0.0.1:5000 ) 2>/dev/null
-echo "  Dieses Fenster offen lassen – schließen (oder Strg+C) beendet readr."
+echo "  Dieses Fenster offen lassen – schließen (oder Strg+C) beendet Pub.Crawl."
 wait $SERVER_PID

@@ -1,198 +1,170 @@
-# 📰 readr — A Minimal Local Research Feed Reader
+# Pub.Crawl
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
 <!-- Nach dem Zenodo-Release hier den DOI-Badge einsetzen:
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
 
-**readr** is a lightweight, privacy-friendly Flask web app that aggregates journal RSS feeds for academic researchers.
-It lets you **skim, star, and organize** new papers,
-with Open Access and citation tools built right in.
+A local web app for staying current with the literature. Pub.Crawl aggregates
+journal RSS feeds, lets you triage new papers by swiping through a card stack,
+and keeps the ones you want in a reading list. It runs entirely on your machine;
+no account, no server, no data leaves your computer.
+
+The name is a pun: a *pub crawl* through new *publications*.
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
-> _Lege deine Screenshots unter `docs/` ab (z. B. mit Windows: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) — dann erscheinen sie hier._
+> _Screenshots unter `docs/` ablegen (`feed.png`, `reading-list.png`) — dann erscheinen sie hier._
 
-| Stapelmodus (Feed) | Leseliste |
+| Card stack (feed) | Reading list |
 |---|---|
-| ![Stapelmodus](docs/feed.png) | ![Leseliste](docs/reading-list.png) |
+| ![Card stack](docs/feed.png) | ![Reading list](docs/reading-list.png) |
 
 ---
 
-## 🚀 Features
+## What it does
 
-* 🧠 Collects and displays entries from multiple RSS/Atom feeds (e.g., journals, preprint servers)
-* 🃏 Swipeable **card-stack mode** (default) for fast Tinder-style triage — or a classic list view
-* 💡 “Like” (add to reading list) / “Skip” (hide) with one-tap **undo**
-* 🔀 Sort by shuffle, newest-first, or **“For me”** — a local relevance ranking that learns from your likes/skips (unlocks automatically after enough triage, shows *why* each paper matched)
-* 📈 Daily streak, “seen today” counter, progress + inbox-zero celebration
-* 🌗 Auto dark/light mode via Pico.css
-* 🔍 Local full-text search in title & abstract
-* 📖 Clean, expandable abstracts & author lists — strips publisher cruft and normalizes metadata via CrossRef (with OpenAlex fallback) when a feed only ships a teaser
-* 📄 Open-Access (Unpaywall) & 🎓 Scholar links per paper
-* ⭐ Persistent reading list with notes/#tags and RIS export
-* 🧾 DOI & CrossRef integration for citation metadata
-* 📚 Built-in journal catalog for one-click feed selection
-* 🔁 OPML import/export + JSON state sync between machines
-* ⚠️ Feed-health warning for broken feeds
-* ⚙ Simple YAML configuration (`config.yaml`) — no database setup required
-* 🕓 Offline caching and read-state persistence (SQLite)
+- Reads multiple RSS/Atom feeds (journals, preprint servers) in parallel and caches them.
+- Two views for the feed: a swipeable **card stack** (default) and a plain **list**.
+- **Like** adds a paper to the reading list, **skip** hides it; both are undoable.
+- Sort by shuffle, newest-first, or **relevance** — a local model that learns from
+  your likes and skips. It unlocks once there is enough data and shows which words
+  made a paper match.
+- Fills in **full abstracts and clean author lists** from CrossRef (with an OpenAlex
+  fallback) when a feed only ships a citation stub. Publisher boilerplate is stripped.
+- Per-paper links: Open Access via Unpaywall, Google Scholar, and RIS export for citation managers.
+- Reading list with free-text notes / `#tags` and full-list RIS export.
+- Built-in catalog of psychology journal feeds; add feeds by checkbox, OPML, or manually.
+- Move reading-list and read state between machines via JSON export/import (merge, not overwrite).
+- Broken feeds are flagged; `verify_feeds.py` checks the catalog for dead URLs.
+- Small extras: daily streak, "seen today" counter, dark/light mode, keyboard shortcuts.
+
+State lives in a local SQLite database. Configuration is a single YAML file.
 
 ---
 
-## 🧩 Installation
+## Install
 
 ```bash
-# Clone the repository
-git clone git@github.com:paulheineck/readr.git
+git clone https://github.com/paulheineck/readr.git
 cd readr
-
-# (Optional) Create and activate a virtual environment
 python -m venv .venv
-.venv\Scripts\activate   # Windows
-# or
-source .venv/bin/activate   # macOS/Linux
-
-# Install dependencies
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS/Linux
 pip install -r requirements.txt
 ```
 
----
+## Run
 
-## 🧩 Run locally
-
-For easiest startup, use the included launcher files:
-
-**Windows:**
+Use the launcher for your OS — it sets up the virtual environment, installs
+dependencies, waits for the server, and opens the browser:
 
 ```bash
-"start Windows.bat"
+"start Windows.bat"     # Windows
+bash "start Mac.sh"     # macOS
+bash "start Linux.sh"   # Linux
 ```
 
-**macOS:**
+Or run it manually:
 
 ```bash
-bash "start Mac.sh"
+python app.py           # then open http://localhost:5000
 ```
 
-**Linux:**
-
-```bash
-bash "start Linux.sh"
-```
-
-These automatically set up the virtual environment (if needed), install dependencies, wait until the server is ready, and open your browser — readr then shows a loading screen while it fetches the latest papers on first start. Keep the launcher window open; closing it stops readr.
-
-You can also start it manually and open
-👉 [http://localhost:5000](http://localhost:5000)
-
-Your personal database (`dashboard.db`) and config (`config.yaml`) will be created automatically on first run.
+On first start there are no feeds configured — the app links you to the catalog
+to pick some. `config.yaml` and `dashboard.db` are created automatically. The
+first load fetches feeds and abstracts in the background and shows a loading
+screen; results are cached afterwards.
 
 ---
 
-## 🧩 Configuration
+## Configuration
 
-Edit `config.yaml` to manage feeds and filters.
-
-Example:
+Feeds and filters live in `config.yaml`, but you rarely need to edit it by hand —
+the **Settings** page covers adding feeds, the catalog, OPML, the allowlist, and
+regex filters. The file looks like this:
 
 ```yaml
 feeds:
-  - name: Personality and Social Psychology Bulletin
-    url: https://journals.sagepub.com/rss/current/pspb.xml
+  - name: PSPB
+    url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=psp
   - name: Nature Human Behaviour
     url: https://www.nature.com/nathumbehav.rss
 
 filters:
-  include:
-    - "(discrimination|inequality|prototypicality)"
+  include: []                                  # empty = keep all
   exclude:
-    - "(animal|clinical|neuroscience)"
+    - "(?i)erratum|corrigendum|call for papers"
+  journal_allowlist: []                        # empty = show all feeds
 
 display:
+  max_items_per_feed: 30
   show_abstract: true
-  max_items_per_feed: 15
+
+api:
+  unpaywall_email: ""                          # optional, for Open-Access lookups
 ```
+
+`config.yaml` is per-user and not tracked in git; it is created from
+`config.example.yaml` on first run.
 
 ---
 
-## ⚙ Options
+## Keyboard shortcuts
 
-* **Mode toggle:** switch between *Feed*, *Reading List*, and *Settings*
-* **View toggle:** card **stack** (default) ⇄ **list** — your choice is remembered per device
-* **Sort toggle:** shuffle ⇄ newest-first — remembered per device
-* **Dark/light mode:** toggle via 🌓 button (stored in localStorage)
-* **Keyboard shortcuts:**
-
-  * `l` → Like / add to list
-  * `d` → Dislike / hide
-  * `j` / `k` → Move down/up (list view)
-  * `/` → Focus search bar
-  * `?` → Show keyboard-shortcut help
+| Key | Action |
+|---|---|
+| `l` | Like / add to reading list |
+| `d` | Skip / hide |
+| `j` / `k` | Move down / up (list view) |
+| `/` | Focus search |
+| `?` | Show shortcut help |
 
 ---
 
-## 💾 File structure
+## Project layout
 
 ```
-readr/
-│
-├── app.py               # Flask backend
+├── app.py                # Flask backend (feeds, metadata, relevance, routes)
 ├── templates/
-│   ├── index.html       # main UI
-│   └── sources.html     # settings view
-├── static/              # optional local CSS/images
-├── config.example.yaml  # template, copied to config.yaml on first run
-├── config.yaml          # your personal feeds & filters (auto-created, gitignored)
-├── journals.yaml        # curated journal catalog for quick-add
-├── verify_feeds.py      # checks the catalog for dead feeds
-├── dashboard.db         # auto-created local database
-├── start Windows.bat    # quick start for Windows
-├── start Mac.sh         # quick start for macOS
-├── start Linux.sh       # quick start for Linux
+│   ├── index.html        # feed / reading list UI
+│   ├── sources.html      # settings
+│   └── loading.html      # first-start loading screen
+├── config.example.yaml   # template, copied to config.yaml on first run
+├── journals.yaml         # curated journal catalog
+├── verify_feeds.py       # checks catalog feeds for reachability
+├── start Windows.bat / start Mac.sh / start Linux.sh
 ├── requirements.txt
-└── README.md
+└── dashboard.db          # local state (auto-created, gitignored)
 ```
+
+## Dependencies
+
+Flask · feedparser · PyYAML · beautifulsoup4 · requests · python-dateutil · APScheduler
 
 ---
 
-## 📦 Dependencies
+## Notes
 
-Minimal and lightweight:
-
-```
-Flask
-feedparser
-PyYAML
-beautifulsoup4
-requests
-python-dateutil
-apscheduler
-```
+- Elsevier feeds (e.g. Cognition) do not expose abstracts through any source, so
+  those stay title-only. Everything else (APA, SAGE, Wiley, Taylor & Francis, …)
+  is enriched automatically.
+- Abstract/metadata lookups are cached for 7 days in `dashboard.db`.
+- Set `FLASK_DEBUG=1` to run in debug mode; otherwise it runs with debug off.
 
 ---
 
-## 💡 Tips
+## Citation
 
-* To disable the Tinder-style animations, toggle the setting in “⚙ Einstellungen”.
-* If you ever delete `dashboard.db`, it will automatically regenerate empty on next start.
-* You can safely share your project folder without the database — all local state is recreated.
-
----
-
-## 📑 Citation
-
-If readr is useful for your work, a citation is appreciated. GitHub shows a
-**“Cite this repository”** button (powered by [`CITATION.cff`](CITATION.cff)).
-
-After minting a DOI via Zenodo (see below), cite as:
+If Pub.Crawl is useful for your work, a citation is appreciated. GitHub shows a
+**“Cite this repository”** button, driven by [`CITATION.cff`](CITATION.cff).
 
 ```bibtex
-@software{heineck_readr,
+@software{heineck_pubcrawl,
   author  = {Heineck, Paul},
-  title   = {readr — A Minimal Local Research Feed Reader},
+  title   = {Pub.Crawl — A Local Research Feed Reader},
   year    = {2026},
   url     = {https://github.com/paulheineck/readr},
   version = {1.0.0},
@@ -200,19 +172,14 @@ After minting a DOI via Zenodo (see below), cite as:
 }
 ```
 
-**Get a citable DOI (one-time, ~10 min):**
-
-1. Sign in at [zenodo.org](https://zenodo.org) with your GitHub account.
-2. Go to **Account → GitHub**, find `paulheineck/readr`, and flip the switch **On**.
-3. On GitHub, create a release: **Releases → Draft a new release →** tag `v1.0.0`, title “readr 1.0.0”, publish.
-   - locally: `git tag -a v1.0.0 -m "readr 1.0.0" && git push origin v1.0.0`
-4. Zenodo automatically archives the release and mints a DOI.
-5. Copy the DOI badge from Zenodo into the top of this README and into `CITATION.cff`.
+To mint a DOI: sign in to [zenodo.org](https://zenodo.org) with GitHub, enable
+this repository under **Account → GitHub**, then publish a GitHub release
+(`git tag -a v1.0.0 -m "Pub.Crawl 1.0.0" && git push origin v1.0.0`, then
+"Draft a new release" for that tag). Zenodo archives the release and issues a DOI;
+paste the badge into this README and `CITATION.cff`.
 
 ---
 
-## 🧑‍💻 License & Credits
+## License
 
 MIT License © 2026 [Paul Heineck](https://github.com/paulheineck)
-
-Built with ❤️ for researchers who want to stay up to date — without the noise.

@@ -1,4 +1,4 @@
-# Beispiel-Konfiguration. Beim ersten Start kopiert readr diese Datei
+# Beispiel-Konfiguration. Beim ersten Start kopiert Pub.Crawl diese Datei
 # automatisch nach config.yaml (das nicht versioniert wird – es ist deine
 # persönliche Datei, wie dashboard.db).
 #
