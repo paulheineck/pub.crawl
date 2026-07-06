@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
-![DOI](https://zenodo.org/badge/1086547863.svg)](https://doi.org/10.5281/zenodo.21216115)
+[![DOI](https://zenodo.org/badge/1086547863.svg)](https://doi.org/10.5281/zenodo.21216115)
 
 A local web app for staying current with the literature. Pub.Crawl aggregates
 journal RSS feeds, lets you triage new papers by swiping through a card stack,
