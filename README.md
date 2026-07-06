@@ -2,8 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
-<!-- Nach dem Zenodo-Release hier den DOI-Badge einsetzen:
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
+[![DOI](https://zenodo.org/badge/1086547863.svg)](https://doi.org/10.5281/zenodo.21216115)
 
 A local web app for staying current with the literature. Pub.Crawl aggregates
 journal RSS feeds, lets you triage new papers by swiping through a card stack,
@@ -164,15 +163,9 @@ If Pub.Crawl is useful for your work, a citation is appreciated. GitHub shows a
   year    = {2026},
   url     = {https://github.com/paulheineck/readr},
   version = {1.0.0},
-  doi     = {10.5281/zenodo.XXXXXXX}
+  doi     = {10.5281/zenodo.21216115}
 }
 ```
-
-To mint a DOI: sign in to [zenodo.org](https://zenodo.org) with GitHub, enable
-this repository under **Account → GitHub**, then publish a GitHub release
-(`git tag -a v1.0.0 -m "Pub.Crawl 1.0.0" && git push origin v1.0.0`, then
-"Draft a new release" for that tag). Zenodo archives the release and issues a DOI;
-paste the badge into this README and `CITATION.cff`.
 
 ---
 
