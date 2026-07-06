@@ -14,8 +14,6 @@ no account, no server, no data leaves your computer. It just crawls all the publ
 
 ## Screenshots
 
-> _Screenshots unter `docs/` ablegen (`feed.png`, `reading-list.png`) — dann erscheinen sie hier._
-
 | Card stack (feed) | Reading list |
 |---|---|
 | ![Card stack](docs/feed.png) | ![Reading list](docs/reading-list.png) |
