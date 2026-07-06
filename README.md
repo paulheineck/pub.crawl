@@ -8,9 +8,7 @@
 A local web app for staying current with the literature. Pub.Crawl aggregates
 journal RSS feeds, lets you triage new papers by swiping through a card stack,
 and keeps the ones you want in a reading list. It runs entirely on your machine;
-no account, no server, no data leaves your computer.
-
-The name is a pun: a *pub crawl* through new *publications*.
+no account, no server, no data leaves your computer. It just crawls all the publications you want.
 
 ---
 
