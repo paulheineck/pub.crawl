@@ -1,0 +1,13 @@
+# Cloudflare-Worker für die Browser-Version: App (statische Dateien) + Feed-Proxy.
+# Im Cloudflare-Dashboard: Root directory = web, Deploy command = npx wrangler deploy
+name = "pub-crawl"
+main = "proxy/worker.js"
+compatibility_date = "2026-09-01"
+
+[assets]
+directory = "."          # web/ selbst; was nicht ausgeliefert werden soll, steht in .assetsignore
+
+# Optional: weitere Websites, die den Proxy nutzen dürfen (z. B. eine GitHub-Pages-Kopie).
+# Die App selbst und localhost sind immer erlaubt.
+# [vars]
+# ALLOWED_ORIGINS = "https://<github-name>.github.io"

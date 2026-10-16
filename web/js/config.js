@@ -1,14 +1,12 @@
 // Grundeinstellungen der Browser-Version.
 
-// URL des Feed-Proxys (Cloudflare Worker, siehe web/proxy/). Der Feed-URL wird
-// URL-kodiert angehängt. Nach dem Deployen des Workers hier eintragen, z. B.
-//   'https://pubcrawl-proxy.<dein-account>.workers.dev/?url='
+// Feed-Proxy. Standard: derselbe Server, der die App ausliefert – der Cloudflare
+// Worker (web/proxy/worker.js) bzw. lokal dev_server.py antworten unter /proxy.
+// Nur wenn die App woanders liegt als der Worker (z. B. GitHub Pages), hier die
+// volle Worker-Adresse eintragen: 'https://<name>.<account>.workers.dev/proxy?url='
 // In der App unter Einstellungen → „Feed-Proxy" lässt er sich auch überschreiben.
 export const WORKER_PROXY = '';
-
-// Lokal (dev_server.py) bringt der Server seinen eigenen Proxy mit.
-const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-export const DEFAULT_PROXY = isLocal ? '/proxy?url=' : WORKER_PROXY;
+export const DEFAULT_PROXY = WORKER_PROXY || '/proxy?url=';
 
 export const CACHE_MINUTES = 10;     // so lange gilt ein geholter Feed-Stand als frisch
 export const META_TTL_DAYS = 7;      // Cache für Abstracts/Autoren/DOIs

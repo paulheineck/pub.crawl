@@ -778,10 +778,10 @@ async function renderSettings() {
 
   <details ${proxyUrl() ? '' : 'open'}><summary>Feed-Proxy</summary>
     <p class="muted">Browser dürfen Journal-Feeds nicht direkt abrufen (CORS). Ein kleiner Proxy reicht die Feeds
-      durch und speichert nichts. Anleitung: <code>web/proxy/README.md</code> im Repository.</p>
+      durch und speichert nichts. Auf Cloudflare bringt Pub.Crawl ihn selbst mit (<code>/proxy</code>).</p>
     <form data-form="proxy">
       <label>Proxy-URL (die Feed-URL wird angehängt)
-        <input name="proxy" value="${esc(c.proxy || '')}" placeholder="${esc(DEFAULT_PROXY || 'https://pubcrawl-proxy.<account>.workers.dev/?url=')}">
+        <input name="proxy" value="${esc(c.proxy || '')}" placeholder="${esc(DEFAULT_PROXY)}">
       </label>
       <p class="muted">Leer lassen = Standard${DEFAULT_PROXY ? ` (<code>${esc(DEFAULT_PROXY)}</code>)` : ' (keiner eingerichtet)'}.</p>
       <button type="submit" style="width:auto;">Speichern</button>

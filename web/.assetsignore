@@ -1,0 +1,8 @@
+.assetsignore
+wrangler.toml
+proxy/
+*.py
+README.md
+__pycache__/
+.wrangler/
+node_modules/

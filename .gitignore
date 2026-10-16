@@ -33,3 +33,7 @@ Thumbs.db
 build/
 dist/
 *.spec
+
+# Cloudflare/Wrangler (lokal)
+.wrangler/
+node_modules/
