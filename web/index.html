@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Pub.Crawl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Pub.Crawl – neue Journal-Artikel im Browser sichten. Alle Daten bleiben in deinem Browser.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍺</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2.0.6/css/pico.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // Theme früh setzen (vermeidet Flackern)
+    try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <!-- Lade-Bildschirm (erster Abruf) -->
+  <div id="loading" hidden>
+    <div class="splash">
+      <p class="logo">🍺 Pub.Crawl</p>
+      <div class="spinner" role="status" aria-label="lädt"></div>
+      <p>Artikel werden geladen …</p>
+      <p class="hint">Beim ersten Start dauert das etwas – Abstracts &amp; Autoren werden danach im Hintergrund ergänzt.</p>
+    </div>
+  </div>
+
+  <main class="container">
+    <header>
+      <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+        <h1>🍺 Pub.Crawl</h1>
+        <nav>
+          <a href="#feed" data-nav="feed">Feed</a>
+          <a href="#stars" data-nav="stars">⭐ Leseliste</a>
+          <a href="#settings" data-nav="settings">⚙ Einstellungen</a>
+        </nav>
+      </div>
+      <div class="rightside">
+        <input id="q" placeholder="Suche in Titel & Abstract" aria-label="Suche">
+        <button id="sortBtn" class="hbtn feed-only" type="button" title="Sortierung umschalten">🔀 Zufall</button>
+        <button id="viewBtn" class="hbtn feed-only" type="button" title="Liste/Stapel umschalten">🃏 Stapel</button>
+        <button id="refreshBtn" class="hbtn icon feed-only" type="button" title="Feeds jetzt neu laden">↻</button>
+        <button id="themeBtn" class="hbtn icon" type="button" title="Theme umschalten">🌓</button>
+      </div>
+    </header>
+
+    <!-- Feed & Leseliste -->
+    <section id="view-list">
+      <div id="notices"></div>
+
+      <article id="relNote" class="notice info" hidden>
+        🧠 <strong>Relevanz-Ranking ist freigeschaltet!</strong>
+        Pub.Crawl hat aus deinen <span id="relLiked">0</span> Likes und <span id="relSkipped">0</span> Skips
+        gelernt, welche Themen dich interessieren, und kann den Feed jetzt „Für mich" sortieren – die
+        spannendsten Paper zuerst. Du erkennst es am Button oben (🧠) und an den 🧠-Stichwörtern an jeder Karte.
+        <div style="margin-top:.6rem;display:flex;gap:.5rem;">
+          <button id="relUse" type="button" class="contrast" style="width:auto;">🧠 Für mich nutzen</button>
+          <button id="relDismiss" type="button" class="secondary outline" style="width:auto;">Verstanden</button>
+        </div>
+      </article>
+
+      <h3 id="listTitle" style="margin:1rem 0 .6rem 0;"></h3>
+      <a id="exportStars" href="#" class="secondary outline" hidden
+         title="Lädt deine ganze Leseliste als RIS-Datei – direkt importierbar in Zotero, EndNote, Citavi, Mendeley …">⬇️ Exportieren</a>
+
+      <div id="statusbar" hidden><span id="statustext"></span></div>
+
+      <div id="done" hidden>
+        <div class="done-emoji">🎉</div>
+        <p>Alles durch! Keine neuen Artikel mehr.</p>
+      </div>
+
+      <section id="list"></section>
+    </section>
+
+    <!-- Einstellungen -->
+    <section id="view-settings" hidden></section>
+  </main>
+
+  <!-- Undo-Toast -->
+  <div id="toast" role="status" aria-live="polite">
+    <span class="toast-msg"></span>
+    <button class="toast-undo" type="button">Rückgängig</button>
+  </div>
+
+  <!-- Tastatur-Hilfe -->
+  <div id="help" role="dialog" aria-label="Tastenkürzel">
+    <div class="help-card">
+      <h4 style="margin-top:0;">Tastenkürzel</h4>
+      <table>
+        <tr><td><kbd>l</kbd></td><td>Auf Leseliste</td></tr>
+        <tr><td><kbd>d</kbd></td><td>Ausblenden / Entfernen</td></tr>
+        <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>nächste / vorige Karte (Liste)</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Suche fokussieren</td></tr>
+        <tr><td><kbd>?</kbd></td><td>diese Hilfe</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>schließen</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
