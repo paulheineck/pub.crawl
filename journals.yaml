@@ -36,6 +36,7 @@
   category: Sozial- & Persönlichkeitspsychologie
 - name: ERSP
   url: https://www.tandfonline.com/feed/rss/pers20
+  issn: 1046-3283   # Browser-Version: Ausweichweg über CrossRef (T&F sperrt Cloudflare)
   category: Sozial- & Persönlichkeitspsychologie
 - name: GPIR
   url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=gpi
@@ -54,6 +55,7 @@
   category: Sozial- & Persönlichkeitspsychologie
 - name: JSP (Journal of Social Psychology)
   url: https://www.tandfonline.com/feed/rss/vsoc20
+  issn: 0022-4545   # Browser-Version: Ausweichweg über CrossRef (T&F sperrt Cloudflare)
   category: Sozial- & Persönlichkeitspsychologie
 - name: JSPR
   url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spr
@@ -69,6 +71,7 @@
   category: Sozial- & Persönlichkeitspsychologie
 - name: Self and Identity
   url: https://www.tandfonline.com/feed/rss/psai20
+  issn: 1529-8868   # Browser-Version: Ausweichweg über CrossRef (T&F sperrt Cloudflare)
   category: Sozial- & Persönlichkeitspsychologie
 - name: SPPS
   url: https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spp
@@ -81,6 +84,7 @@
   category: Kognitive Psychologie
 - name: Cognition and Emotion
   url: https://www.tandfonline.com/feed/rss/pcem20
+  issn: 0269-9931   # Browser-Version: Ausweichweg über CrossRef (T&F sperrt Cloudflare)
   category: Kognitive Psychologie
 - name: Cognitive Psychology
   url: https://rss.sciencedirect.com/publication/science/00100285
@@ -93,6 +97,7 @@
   category: Kognitive Psychologie
 - name: Memory
   url: https://www.tandfonline.com/feed/rss/pmem20
+  issn: 0965-8211   # Browser-Version: Ausweichweg über CrossRef (T&F sperrt Cloudflare)
   category: Kognitive Psychologie
 - name: Developmental Psychology
   url: https://content.apa.org/journals/dev.rss

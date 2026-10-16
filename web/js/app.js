@@ -75,7 +75,10 @@ async function fetchAllFeeds() {
   compileFilters();
   const excludeRes = (c.filters.exclude || []).map(p => compilePattern(p)).filter(Boolean);
   const allow = new Set(c.filters.journal_allowlist || []);
-  const feeds = (c.feeds || []).filter(f => !allow.size || allow.has(f.name));
+  // ISSN aus dem Katalog ergänzen (Ausweichweg über CrossRef, falls der Verlag den Proxy sperrt)
+  const issnByUrl = new Map((await loadCatalog()).filter(j => j.issn).map(j => [j.url, j.issn]));
+  const feeds = (c.feeds || []).filter(f => !allow.size || allow.has(f.name))
+    .map(f => (f.issn || !issnByUrl.has(f.url) ? f : { ...f, issn: issnByUrl.get(f.url) }));
   const ctx = { includeRes, excludeRes, maxItems: c.display.max_items_per_feed || 30, proxy: proxyUrl() };
   const items = await Promise.all(feeds.map(f => fetchOneFeed(f, ctx)));
   items.sort((a, b) => a.name.localeCompare(b.name));
@@ -837,7 +840,7 @@ async function onSettingsSubmit(ev) {
       for (const u of fd.getAll('catalog')) {
         const j = byUrl.get(u);
         if (!j || c.feeds.some(f => f.url === u || f.name === j.name)) continue;
-        c.feeds.push({ name: j.name, url: j.url });
+        c.feeds.push(j.issn ? { name: j.name, url: j.url, issn: j.issn } : { name: j.name, url: j.url });
         n++;
       }
       await save('config');

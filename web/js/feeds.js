@@ -189,14 +189,44 @@ export async function fetchFeedText(url, proxy, timeoutMs = 20000) {
   }
 }
 
+// Ausweichweg: neueste Artikel eines Journals direkt von CrossRef (per ISSN).
+// Für Verlage, die den Feed-Proxy sperren (Taylor & Francis blockt Cloudflare).
+// CrossRef ist tagesaktuell und erlaubt Browser-Zugriffe.
+async function crossrefJournal(issn, maxItems) {
+  const url = `https://api.crossref.org/journals/${encodeURIComponent(issn)}/works`
+    + `?sort=created&order=desc&rows=${maxItems}&filter=type:journal-article`
+    + '&select=DOI,title,author,created,published-online,URL,abstract'
+    + '&mailto=pubcrawl@users.noreply.github.com';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`CrossRef HTTP ${res.status}`);
+  const items = (await res.json()).message?.items || [];
+  return items.map(it => {
+    const dp = (it['published-online'] || it.created)?.['date-parts']?.[0] || [];
+    return {
+      title: htmlToText(it.title?.[0] || ''),
+      link: it.URL || `https://doi.org/${it.DOI}`,
+      summaryHtml: it.abstract || '',
+      authors: (it.author || []).map(a => [a.given, a.family].filter(Boolean).join(' ')).filter(Boolean),
+      date: dp.length === 3 ? dp.map((n, i) => (i ? String(n).padStart(2, '0') : n)).join('-') : '',
+      doiHints: [it.DOI],
+    };
+  });
+}
+
 // Einen Feed holen und in Einträge umwandeln (ohne Metadaten-Anreicherung)
 export async function fetchOneFeed(feed, ctx) {
   const { includeRes, excludeRes, maxItems, proxy } = ctx;
   try {
-    const raw = parseFeed(await fetchFeedText(feed.url, proxy)).slice(0, maxItems);
+    let raw;
+    try {
+      raw = parseFeed(await fetchFeedText(feed.url, proxy)).slice(0, maxItems);
+    } catch (e) {
+      if (!feed.issn) throw e;
+      raw = await crossrefJournal(feed.issn, maxItems);
+    }
     const entries = [];
     for (const r of raw) {
-      let summary = stripCitation(htmlToText(r.summaryHtml));
+      let summary = stripCitation(htmlToText(r.summaryHtml)).replace(/^abstract[:\s]+/i, '');
       if (summary === '.' ) summary = '';
       // ScienceDirect: „Publication date: … Source: … Author(s): …" statt Abstract
       const sd = summary.match(/^Publication date:\s*(.*?)\s*Source:.*?(?:Author\(s\):\s*(.*))?$/i);

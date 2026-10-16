@@ -57,7 +57,8 @@
  {
   "name": "ERSP",
   "url": "https://www.tandfonline.com/feed/rss/pers20",
-  "category": "Sozial- & Persönlichkeitspsychologie"
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "1046-3283"
  },
  {
   "name": "GPIR",
@@ -87,7 +88,8 @@
  {
   "name": "JSP (Journal of Social Psychology)",
   "url": "https://www.tandfonline.com/feed/rss/vsoc20",
-  "category": "Sozial- & Persönlichkeitspsychologie"
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "0022-4545"
  },
  {
   "name": "JSPR",
@@ -112,7 +114,8 @@
  {
   "name": "Self and Identity",
   "url": "https://www.tandfonline.com/feed/rss/psai20",
-  "category": "Sozial- & Persönlichkeitspsychologie"
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "1529-8868"
  },
  {
   "name": "SPPS",
@@ -132,7 +135,8 @@
  {
   "name": "Cognition and Emotion",
   "url": "https://www.tandfonline.com/feed/rss/pcem20",
-  "category": "Kognitive Psychologie"
+  "category": "Kognitive Psychologie",
+  "issn": "0269-9931"
  },
  {
   "name": "Cognitive Psychology",
@@ -152,7 +156,8 @@
  {
   "name": "Memory",
   "url": "https://www.tandfonline.com/feed/rss/pmem20",
-  "category": "Kognitive Psychologie"
+  "category": "Kognitive Psychologie",
+  "issn": "0965-8211"
  },
  {
   "name": "Developmental Psychology",
