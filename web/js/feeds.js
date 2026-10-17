@@ -192,14 +192,34 @@ export async function fetchFeedText(url, proxy, timeoutMs = 20000) {
 // Ausweichweg: neueste Artikel eines Journals direkt von CrossRef (per ISSN).
 // Für Verlage, die den Feed-Proxy sperren (Taylor & Francis blockt Cloudflare).
 // CrossRef ist tagesaktuell und erlaubt Browser-Zugriffe.
+// CrossRef erlaubt nur wenige gleichzeitige Anfragen → Warteschlange + Wiederholung
+let crActive = 0;
+const crQueue = [];
+async function crossrefSlot(fn) {
+  if (crActive >= 2) await new Promise(r => crQueue.push(r));
+  crActive++;
+  try { return await fn(); } finally { crActive--; crQueue.shift()?.(); }
+}
+
 async function crossrefJournal(issn, maxItems) {
   const url = `https://api.crossref.org/journals/${encodeURIComponent(issn)}/works`
     + `?sort=created&order=desc&rows=${maxItems}&filter=type:journal-article`
     + '&select=DOI,title,author,created,published-online,URL,abstract'
     + '&mailto=pubcrawl@users.noreply.github.com';
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`CrossRef HTTP ${res.status}`);
-  const items = (await res.json()).message?.items || [];
+  const json = await crossrefSlot(async () => {
+    for (let i = 0; ; i++) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) return res.json();
+        if (res.status !== 429 && res.status < 500) throw new Error(`CrossRef HTTP ${res.status}`);
+        if (i >= 3) throw new Error(`CrossRef HTTP ${res.status}`);
+      } catch (e) {
+        if (i >= 3 || /HTTP 4/.test(e.message)) throw e;   // Rate-Limit kommt oft als „Failed to fetch"
+      }
+      await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+    }
+  });
+  const items = json.message?.items || [];
   return items.map(it => {
     const dp = (it['published-online'] || it.created)?.['date-parts']?.[0] || [];
     return {
@@ -218,11 +238,17 @@ export async function fetchOneFeed(feed, ctx) {
   const { includeRes, excludeRes, maxItems, proxy } = ctx;
   try {
     let raw;
-    try {
-      raw = parseFeed(await fetchFeedText(feed.url, proxy)).slice(0, maxItems);
-    } catch (e) {
-      if (!feed.issn) throw e;
-      raw = await crossrefJournal(feed.issn, maxItems);
+    const issn = feed.issn || (feed.url.startsWith('crossref:') ? feed.url.slice(9) : null);
+    if (feed.url.startsWith('crossref:')) {
+      raw = await crossrefJournal(issn, maxItems);          // Verlag ohne nutzbaren RSS-Feed
+    } else {
+      try {
+        raw = parseFeed(await fetchFeedText(feed.url, proxy)).slice(0, maxItems);
+        if (!raw.length && issn) throw new Error('Feed leer');
+      } catch (e) {
+        if (!issn) throw e;
+        raw = await crossrefJournal(issn, maxItems);
+      }
     }
     const entries = [];
     for (const r of raw) {

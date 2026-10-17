@@ -637,7 +637,7 @@ function exportOpml() {
   const lines = [
     '<?xml version="1.0" encoding="UTF-8"?>', '<opml version="2.0">',
     '  <head><title>Pub.Crawl feeds</title></head>', '  <body>',
-    ...state.config.feeds.map(f =>
+    ...state.config.feeds.filter(f => !f.url.startsWith('crossref:')).map(f =>   // nur echte RSS-Feeds
       `    <outline text="${esc(f.name)}" title="${esc(f.name)}" type="rss" xmlUrl="${esc(f.url)}"/>`),
     '  </body>', '</opml>',
   ];
@@ -815,7 +815,7 @@ async function renderSettings() {
     ${Object.keys(groups).length ? `<details ${c.feeds.length ? '' : 'open'}><summary>➕ Journals aus dem Katalog hinzufügen</summary>
       <form data-form="catalog">
         ${Object.entries(groups).map(([cat, items]) => `<fieldset><legend><strong>${esc(cat)}</strong></legend>
-          <div class="row" style="gap:1.25rem;">${items.map(j =>
+          <div class="row" style="gap:1.25rem;">${[...items].sort((x, y) => x.name.localeCompare(y.name, 'de')).map(j =>
             `<label><input type="checkbox" name="catalog" value="${esc(j.url)}"> ${esc(j.name)}</label>`).join('')}</div>
         </fieldset>`).join('')}
         <button type="submit" style="width:auto;">Ausgewählte hinzufügen</button>

@@ -123,6 +123,94 @@
   "category": "Sozial- & Persönlichkeitspsychologie"
  },
  {
+  "name": "Social Cognition",
+  "url": "https://guilfordjournals.com/action/showFeed?type=etoc&feed=rss&jc=soco",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "0278-016X"
+ },
+ {
+  "name": "Social Psychology",
+  "url": "https://econtent.hogrefe.com/action/showFeed?type=etoc&feed=rss&jc=zsp",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "Comprehensive Results in Social Psychology",
+  "url": "https://www.tandfonline.com/feed/rss/rrsp20",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "2374-3603"
+ },
+ {
+  "name": "Basic and Applied Social Psychology",
+  "url": "https://www.tandfonline.com/feed/rss/hbas20",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "0197-3533"
+ },
+ {
+  "name": "Social Influence",
+  "url": "https://www.tandfonline.com/feed/rss/psif20",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "1553-4510"
+ },
+ {
+  "name": "Social Neuroscience",
+  "url": "https://www.tandfonline.com/feed/rss/psns20",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "1747-0919"
+ },
+ {
+  "name": "Journal of Applied Social Psychology",
+  "url": "https://onlinelibrary.wiley.com/feed/15591816/most-recent",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "Political Psychology",
+  "url": "https://onlinelibrary.wiley.com/feed/14679221/most-recent",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "Personal Relationships",
+  "url": "https://onlinelibrary.wiley.com/feed/14756811/most-recent",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "Journal of Social Issues",
+  "url": "https://onlinelibrary.wiley.com/feed/15404560/most-recent",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "European Journal of Personality",
+  "url": "https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=erp",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "Social Psychology Quarterly",
+  "url": "https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=spq",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "Social Psychological Bulletin",
+  "url": "https://spb.psychopen.eu/index.php/spb/gateway/plugin/WebFeedGatewayPlugin/rss2",
+  "category": "Sozial- & Persönlichkeitspsychologie"
+ },
+ {
+  "name": "Motivation and Emotion",
+  "url": "crossref:0146-7239",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "0146-7239"
+ },
+ {
+  "name": "International Review of Social Psychology",
+  "url": "crossref:2397-8570",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "2397-8570"
+ },
+ {
+  "name": "Collabra: Psychology",
+  "url": "crossref:2474-7394",
+  "category": "Sozial- & Persönlichkeitspsychologie",
+  "issn": "2474-7394"
+ },
+ {
   "name": "Applied Cognitive Psychology",
   "url": "https://onlinelibrary.wiley.com/feed/10990720/most-recent",
   "category": "Kognitive Psychologie"
@@ -158,6 +246,149 @@
   "url": "https://www.tandfonline.com/feed/rss/pmem20",
   "category": "Kognitive Psychologie",
   "issn": "0965-8211"
+ },
+ {
+  "name": "JEP: Human Perception and Performance",
+  "url": "https://content.apa.org/journals/xhp.rss",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "JEP: Applied",
+  "url": "https://content.apa.org/journals/xap.rss",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Decision",
+  "url": "https://content.apa.org/journals/dec.rss",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Journal of Memory and Language",
+  "url": "https://rss.sciencedirect.com/publication/science/0749596X",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Acta Psychologica",
+  "url": "https://rss.sciencedirect.com/publication/science/00016918",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Consciousness and Cognition",
+  "url": "https://rss.sciencedirect.com/publication/science/10538100",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Quarterly Journal of Experimental Psychology",
+  "url": "https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=qjp",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Cognitive Science",
+  "url": "https://onlinelibrary.wiley.com/feed/15516709/most-recent",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Topics in Cognitive Science",
+  "url": "https://onlinelibrary.wiley.com/feed/17568765/most-recent",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Experimental Psychology",
+  "url": "https://econtent.hogrefe.com/action/showFeed?type=etoc&feed=rss&jc=zea",
+  "category": "Kognitive Psychologie"
+ },
+ {
+  "name": "Thinking & Reasoning",
+  "url": "https://www.tandfonline.com/feed/rss/ptar20",
+  "category": "Kognitive Psychologie",
+  "issn": "1354-6783"
+ },
+ {
+  "name": "Journal of Cognitive Psychology",
+  "url": "https://www.tandfonline.com/feed/rss/pecp21",
+  "category": "Kognitive Psychologie",
+  "issn": "2044-5911"
+ },
+ {
+  "name": "Language, Cognition and Neuroscience",
+  "url": "https://www.tandfonline.com/feed/rss/plcp21",
+  "category": "Kognitive Psychologie",
+  "issn": "2327-3798"
+ },
+ {
+  "name": "Psychonomic Bulletin & Review",
+  "url": "crossref:1069-9384",
+  "category": "Kognitive Psychologie",
+  "issn": "1069-9384"
+ },
+ {
+  "name": "Memory & Cognition",
+  "url": "crossref:0090-502X",
+  "category": "Kognitive Psychologie",
+  "issn": "0090-502X"
+ },
+ {
+  "name": "Cognitive Research: Principles and Implications",
+  "url": "crossref:2365-7464",
+  "category": "Kognitive Psychologie",
+  "issn": "2365-7464"
+ },
+ {
+  "name": "Psychological Research",
+  "url": "crossref:0340-0727",
+  "category": "Kognitive Psychologie",
+  "issn": "0340-0727"
+ },
+ {
+  "name": "Journal of Cognition",
+  "url": "crossref:2514-4820",
+  "category": "Kognitive Psychologie",
+  "issn": "2514-4820"
+ },
+ {
+  "name": "Journal of Eye Movement Research",
+  "url": "crossref:1995-8692",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung",
+  "issn": "1995-8692"
+ },
+ {
+  "name": "Journal of Vision",
+  "url": "crossref:1534-7362",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung",
+  "issn": "1534-7362"
+ },
+ {
+  "name": "Attention, Perception, & Psychophysics",
+  "url": "crossref:1943-3921",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung",
+  "issn": "1943-3921"
+ },
+ {
+  "name": "Journal of Nonverbal Behavior",
+  "url": "crossref:0191-5886",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung",
+  "issn": "0191-5886"
+ },
+ {
+  "name": "Visual Cognition",
+  "url": "https://www.tandfonline.com/feed/rss/pvis20",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung",
+  "issn": "1350-6285"
+ },
+ {
+  "name": "Vision Research",
+  "url": "https://rss.sciencedirect.com/publication/science/00426989",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung"
+ },
+ {
+  "name": "Perception",
+  "url": "https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=pec",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung"
+ },
+ {
+  "name": "i-Perception",
+  "url": "https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=ipe",
+  "category": "Blick, Aufmerksamkeit & Wahrnehmung"
  },
  {
   "name": "Developmental Psychology",
@@ -265,6 +496,17 @@
   "category": "Biologische Psychologie & Neurowissenschaft"
  },
  {
+  "name": "Cortex",
+  "url": "https://rss.sciencedirect.com/publication/science/00109452",
+  "category": "Biologische Psychologie & Neurowissenschaft"
+ },
+ {
+  "name": "Cognitive, Affective, & Behavioral Neuroscience",
+  "url": "crossref:1530-7026",
+  "category": "Biologische Psychologie & Neurowissenschaft",
+  "issn": "1530-7026"
+ },
+ {
   "name": "AMPPS",
   "url": "https://journals.sagepub.com/action/showFeed?type=etoc&feed=rss&jc=amp",
   "category": "Methoden & Open Science"
@@ -273,6 +515,12 @@
   "name": "Psychological Methods",
   "url": "https://content.apa.org/journals/met.rss",
   "category": "Methoden & Open Science"
+ },
+ {
+  "name": "Behavior Research Methods",
+  "url": "crossref:1554-3528",
+  "category": "Methoden & Open Science",
+  "issn": "1554-3528"
  },
  {
   "name": "Nature",
