@@ -4,6 +4,10 @@ name = "pub-crawl"
 main = "proxy/worker.js"
 compatibility_date = "2026-09-01"
 
+# Keine Zugriffsprotokolle speichern (so steht es auch in der Datenschutzerklärung)
+[observability]
+enabled = false
+
 [assets]
 directory = "."          # web/ selbst; was nicht ausgeliefert werden soll, steht in .assetsignore
 

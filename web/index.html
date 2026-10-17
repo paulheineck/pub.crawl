@@ -5,8 +5,8 @@
   <title>Pub.Crawl</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Pub.Crawl – neue Journal-Artikel im Browser sichten. Alle Daten bleiben in deinem Browser.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍺</text></svg>">
-  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2.0.6/css/pico.min.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  <link rel="stylesheet" href="vendor/pico.min.css">
   <link rel="stylesheet" href="style.css">
   <script>
     // Theme früh setzen (vermeidet Flackern)
@@ -17,7 +17,7 @@
   <!-- Lade-Bildschirm (erster Abruf) -->
   <div id="loading" hidden>
     <div class="splash">
-      <p class="logo">🍺 Pub.Crawl</p>
+      <p class="logo">📰 Pub.Crawl</p>
       <div class="spinner" role="status" aria-label="lädt"></div>
       <p>Artikel werden geladen …</p>
       <p class="hint">Beim ersten Start dauert das etwas – Abstracts &amp; Autoren werden danach im Hintergrund ergänzt.</p>
@@ -27,7 +27,7 @@
   <main class="container">
     <header>
       <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
-        <h1>🍺 Pub.Crawl</h1>
+        <h1>📰 Pub.Crawl</h1>
         <nav>
           <a href="#feed" data-nav="feed">Feed</a>
           <a href="#stars" data-nav="stars">⭐ Leseliste</a>
@@ -74,6 +74,12 @@
 
     <!-- Einstellungen -->
     <section id="view-settings" hidden></section>
+
+    <footer class="site">
+      <a href="hilfe.html">Anleitung</a> ·
+      <a href="https://github.com/paulheineck/readr" target="_blank" rel="noopener">Open Source auf GitHub</a> ·
+      <a href="impressum.html">Impressum &amp; Datenschutz</a>
+    </footer>
   </main>
 
   <!-- Undo-Toast -->

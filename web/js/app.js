@@ -5,7 +5,7 @@ import {
   DEFAULT_PROXY, CACHE_MINUTES, MIN_REL, MAX_SKIPS, DEPTH, STACK_H, META_CONCURRENCY,
 } from './config.js';
 import {
-  fetchOneFeed, probeFeed, compilePattern, highlight, escapeHtml as esc, extractStats, relDate,
+  fetchOneFeed, probeFeed, compilePattern, matchFilters, highlight, escapeHtml as esc, extractStats, relDate,
 } from './feeds.js';
 import { getMeta, doiByTitle, persistMeta, openAccessUrl, risFor } from './meta.js';
 import { buildWeights, score, relevanceCounts, activityStats } from './relevance.js';
@@ -24,7 +24,8 @@ const ls = {
 let view = 'feed';
 let current = new Map();      // id → Eintrag der gerade gerenderten Liste
 let whyById = new Map();      // nur im Modus „Für mich"
-let includeRes = [];
+let includeRes = [], excludeRes = [];
+let hiddenByFilter = 0;
 let initialCount = 0, lastN = 0, _remaining = 0, _searching = false;
 let enriching = false, enrichRetries = 0;
 let flash = '';
@@ -37,6 +38,7 @@ const nowIso = () => new Date().toISOString();
 
 function compileFilters() {
   includeRes = (state.config.filters.include || []).map(p => compilePattern(p)).filter(Boolean);
+  excludeRes = (state.config.filters.exclude || []).map(p => compilePattern(p)).filter(Boolean);
 }
 
 // ===========================================================================
@@ -45,7 +47,7 @@ function compileFilters() {
 
 function configKey() {
   const c = state.config;
-  return JSON.stringify([c.feeds, c.filters, c.display.max_items_per_feed, proxyUrl()]);
+  return JSON.stringify([c.feeds.map(f => f.url).sort(), c.display.max_items_per_feed, proxyUrl()]);
 }
 
 function cacheFresh() {
@@ -72,14 +74,13 @@ function applyMeta(e, m) {
 
 async function fetchAllFeeds() {
   const c = state.config;
-  compileFilters();
-  const excludeRes = (c.filters.exclude || []).map(p => compilePattern(p)).filter(Boolean);
-  const allow = new Set(c.filters.journal_allowlist || []);
+  // Alle Feeds holen (auch ausgeschaltete) – Filter und An/Aus greifen erst beim Anzeigen,
+  // so wirken Änderungen in den Einstellungen sofort ohne neuen Abruf.
   // ISSN aus dem Katalog ergänzen (Ausweichweg über CrossRef, falls der Verlag den Proxy sperrt)
   const issnByUrl = new Map((await loadCatalog()).filter(j => j.issn).map(j => [j.url, j.issn]));
-  const feeds = (c.feeds || []).filter(f => !allow.size || allow.has(f.name))
+  const feeds = (c.feeds || [])
     .map(f => (f.issn || !issnByUrl.has(f.url) ? f : { ...f, issn: issnByUrl.get(f.url) }));
-  const ctx = { includeRes, excludeRes, maxItems: c.display.max_items_per_feed || 30, proxy: proxyUrl() };
+  const ctx = { includeRes: [], excludeRes: [], maxItems: c.display.max_items_per_feed || 30, proxy: proxyUrl() };
   const items = await Promise.all(feeds.map(f => fetchOneFeed(f, ctx)));
   items.sort((a, b) => a.name.localeCompare(b.name));
   for (const f of items) for (const e of f.entries) {
@@ -146,14 +147,22 @@ async function refresh() {
 // Listen bauen
 // ===========================================================================
 
+const activeFeedNames = () => new Set(state.config.feeds.filter(f => !f.off).map(f => f.name));
+
 function feedEntries() {
   const out = [], seen = new Set();
-  for (const f of state.feedCache?.items || []) for (const e of f.entries) {
-    if (state.read[e.id] || state.starred[e.id]) continue;
-    const key = e.doi ? 'doi:' + e.doi.toLowerCase() : 'ti:' + normTitle(e.title);
-    if (seen.has(key)) continue;       // gleiches Paper aus mehreren Feeds
-    seen.add(key);
-    out.push(e);
+  const active = activeFeedNames();
+  hiddenByFilter = 0;
+  for (const f of state.feedCache?.items || []) {
+    if (!active.has(f.name)) continue;
+    for (const e of f.entries) {
+      if (state.read[e.id] || state.starred[e.id]) continue;
+      if (!matchFilters(`${e.title} ${e.summary}`, includeRes, excludeRes)) { hiddenByFilter++; continue; }
+      const key = e.doi ? 'doi:' + e.doi.toLowerCase() : 'ti:' + normTitle(e.title);
+      if (seen.has(key)) continue;       // gleiches Paper aus mehreren Feeds
+      seen.add(key);
+      out.push(e);
+    }
   }
   return out;
 }
@@ -292,10 +301,17 @@ function renderNotices(entriesCount) {
       parts.push(`<article class="notice warn"><strong>Feed-Proxy fehlt.</strong> Ohne ihn kann der Browser
         keine Journal-Feeds laden. <a href="#settings">In den Einstellungen einrichten →</a></article>`);
     } else {
-      const errs = (state.feedCache?.items || []).filter(f => f.error);
+      const active = activeFeedNames();
+      const errs = (state.feedCache?.items || []).filter(f => f.error && active.has(f.name));
       if (errs.length) {
         parts.push(`<article class="notice warn">⚠ ${errs.length} Feed(s) nicht erreichbar
           (<a href="#settings">Details</a>): ${errs.map(f => esc(f.name)).join(', ')}</article>`);
+      }
+      const inc = filterTerms(c.filters.include);
+      if (inc.length || hiddenByFilter) {
+        parts.push(`<article class="notice info filter-note">🔍 Filter aktiv${inc.length
+          ? ` – nur Artikel mit ${inc.map(t => `„${esc(t.label)}"`).join(', ')}` : ''}${hiddenByFilter
+          ? ` · ${hiddenByFilter} ausgeblendet` : ''} · <a href="#settings">ändern</a></article>`);
       }
       if (!entriesCount) parts.push('<article class="notice warn">Es sind keine neuen Artikel verfügbar.</article>');
     }
@@ -645,15 +661,20 @@ function importOpml(text) {
   return added;
 }
 
+// Komplett-Backup: Journals, Filter, Leseliste mit Notizen, Likes/Skips.
+// Die Felder starred/read sind kompatibel mit der lokalen Python-Version.
 function exportState() {
+  const c = state.config;
   const data = {
     version: 1, app: 'Pub.Crawl (web)', exported_at: nowIso(),
+    config: { feeds: c.feeds, filters: { include: c.filters.include, exclude: c.filters.exclude } },
     starred: Object.entries(state.starred).map(([id, s]) =>
       ({ id, starred_at: s.starred_at, snapshot: s.snapshot, note: s.note || '' })),
     read: Object.entries(state.read).map(([id, r]) =>
       ({ id, read_at: r.read_at, title: r.title || '', summary: r.summary || '' })),
   };
-  download('pubcrawl-state.json', JSON.stringify(data, null, 2), 'application/json');
+  const day = new Date().toISOString().slice(0, 10);
+  download(`pubcrawl-backup-${day}.json`, JSON.stringify(data, null, 2), 'application/json');
 }
 
 // Python-Version speichert "YYYY-MM-DD HH:MM:SS" (UTC) → in ISO umwandeln
@@ -663,9 +684,21 @@ function normTs(t) {
   return t;
 }
 
+// Führt zusammen – überschreibt und löscht nichts
 function importState(text) {
   const data = JSON.parse(text);
-  let s = 0, r = 0;
+  const c = state.config;
+  let f = 0, s = 0, r = 0;
+  for (const feed of data.config?.feeds || []) {
+    if (!feed?.url || c.feeds.some(x => x.url === feed.url || x.name === feed.name)) continue;
+    c.feeds.push(feed);
+    f++;
+  }
+  for (const key of ['include', 'exclude']) {
+    for (const p of data.config?.filters?.[key] || []) {
+      if (compilePattern(p) && !c.filters[key].includes(p)) c.filters[key].push(p);
+    }
+  }
   for (const it of data.starred || []) {
     if (!it?.id || state.starred[it.id]) continue;
     state.starred[it.id] = { starred_at: normTs(it.starred_at), snapshot: it.snapshot || {}, note: it.note || '' };
@@ -681,8 +714,61 @@ function importState(text) {
     r++;
   }
   pruneReads();
-  save('starred', 'read');
-  return [s, r];
+  save('config', 'starred', 'read');
+  return [f, s, r];
+}
+
+// ===========================================================================
+// Filter: Wörter statt Regex. Gespeichert wird weiter als Muster-Liste,
+// ein Wort „depress" wird zu (?i)\bdepress (findet auch depression, depressive).
+// ===========================================================================
+
+const escRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function filterTerms(patterns) {
+  const out = [];
+  for (const p of patterns || []) {
+    const body = p.replace(/^\(\?i\)/, '');
+    const parts = body.split('|').map(x => x.replace(/^\\b/, '').replace(/\\b$/, ''));
+    if (parts.every(x => x && !/(^|[^\\])[()[\]{}^$*+?.]/.test(x))) {
+      for (const x of parts) out.push({ label: x.replace(/\\(.)/g, '$1'), pattern: null });
+    } else {
+      out.push({ label: p, pattern: p });     // echtes Regex-Muster bleibt unverändert
+    }
+  }
+  return out;
+}
+
+const termToPattern = (t) => t.pattern || `(?i)\\b${escRe(t.label)}`;
+
+function chipsEditor(key, placeholder) {
+  return `<div class="term-box" data-list="${key}">
+    ${filterTerms(state.config.filters[key]).map(t => `<span class="term${t.pattern ? ' raw' : ''}"
+      data-label="${esc(t.label)}"${t.pattern ? ` data-pattern="${esc(t.pattern)}"` : ''}>${esc(t.label)}<button
+      type="button" data-act="term-del" aria-label="${esc(t.label)} entfernen">×</button></span>`).join('')}
+    <input type="text" class="term-input" placeholder="${esc(placeholder)}" aria-label="${esc(placeholder)}">
+  </div>`;
+}
+
+async function saveTerms(box) {
+  const terms = $$('.term', box).map(el => ({ label: el.dataset.label, pattern: el.dataset.pattern || null }));
+  state.config.filters[box.dataset.list] = terms.map(termToPattern);
+  await save('config');
+  const ok = $('#view-settings .saved');
+  if (ok) { ok.hidden = false; clearTimeout(ok._t); ok._t = setTimeout(() => { ok.hidden = true; }, 1500); }
+}
+
+function addTerm(input) {
+  const label = input.value.replace(/,$/, '').trim();
+  input.value = '';
+  const box = input.closest('.term-box');
+  if (!label || $$('.term', box).some(el => el.dataset.label.toLowerCase() === label.toLowerCase())) return;
+  const chip = document.createElement('span');
+  chip.className = 'term';
+  chip.dataset.label = label;
+  chip.innerHTML = `${esc(label)}<button type="button" data-act="term-del" aria-label="${esc(label)} entfernen">×</button>`;
+  box.insertBefore(chip, input);
+  saveTerms(box);
 }
 
 // ===========================================================================
@@ -696,118 +782,102 @@ async function loadCatalog() {
   return catalogCache;
 }
 
+const tip = (text) => `<span class="tip" tabindex="0" role="note" aria-label="${esc(text)}" data-tip="${esc(text)}">?</span>`;
+
 async function renderSettings() {
   const c = state.config;
   const catalog = await loadCatalog();
   const subscribed = new Set(c.feeds.map(f => f.url));
   const groups = {};
   for (const j of catalog) if (!subscribed.has(j.url)) (groups[j.category || 'Sonstige'] ||= []).push(j);
-  const errors = (state.feedCache?.items || []).filter(f => f.error);
-  const allow = new Set(c.filters.journal_allowlist || []);
+  const active = activeFeedNames();
+  const errors = (state.feedCache?.items || []).filter(f => f.error && active.has(f.name));
   const msg = flash; flash = '';
 
   $('#view-settings').innerHTML = `
   <h2 style="margin-top:1rem;">Einstellungen</h2>
   ${msg ? `<article class="notice info">${esc(msg)}</article>` : ''}
-  ${!proxyUrl() ? `<article class="notice warn"><strong>Feed-Proxy fehlt.</strong> Ohne Proxy kann der Browser keine
-    Journal-Feeds abrufen – siehe „Feed-Proxy" weiter unten.</article>` : ''}
-  ${errors.length ? `<article class="notice warn"><strong>⚠ ${errors.length} Feed(s) nicht erreichbar</strong>
-    <ul style="margin:.4rem 0 0 0;">${errors.map(f => `<li><code>${esc(f.name)}</code>
+  ${errors.length ? `<article class="notice warn"><strong>⚠ ${errors.length} Journal(s) gerade nicht erreichbar</strong>
+    <ul style="margin:.4rem 0 0 0;">${errors.map(f => `<li>${esc(f.name)}
     <span class="muted">— ${esc(f.error)}</span></li>`).join('')}</ul></article>` : ''}
 
-  <h3>Aktive Feeds</h3>
-  ${c.feeds.length ? `<p class="muted">Die Journals, die im Feed erscheinen. Mit der Allowlist weiter unten kannst du einzelne vorübergehend ausblenden.</p>
-  <table><thead><tr><th>Name</th><th>RSS-URL</th><th style="width:1%;"></th></tr></thead><tbody>
-    ${c.feeds.map(f => `<tr><td>${esc(f.name)}</td>
-      <td><a target="_blank" rel="noopener" href="${esc(safeUrl(f.url))}">${esc(f.url)}</a></td>
-      <td><button class="secondary outline" style="width:auto;" data-act="remove-feed" data-name="${esc(f.name)}">Entfernen</button></td></tr>`).join('')}
-  </tbody></table>` : '<p class="muted">Noch keine Feeds – wähle unten welche aus dem Katalog.</p>'}
+  <section class="set">
+    <h3>📚 Deine Journals ${tip('Aus diesen Journals kommen die Artikel im Feed. Mit dem Schalter blendest du ein Journal vorübergehend aus, ohne es zu löschen.')}</h3>
+    ${c.feeds.length ? `<table class="journals"><tbody>
+      ${c.feeds.map(f => `<tr class="${f.off ? 'off' : ''}">
+        <td style="width:1%;"><input type="checkbox" role="switch" data-toggle="feed" data-name="${esc(f.name)}"
+          ${f.off ? '' : 'checked'} aria-label="${esc(f.name)} im Feed zeigen"></td>
+        <td><span title="${esc(f.url)}">${esc(f.name)}</span></td>
+        <td style="width:1%;"><button class="secondary outline" data-act="remove-feed" data-name="${esc(f.name)}"
+          title="Journal entfernen">Entfernen</button></td></tr>`).join('')}
+    </tbody></table>` : '<p class="muted">Noch keine Journals – wähle unten welche aus dem Katalog.</p>'}
 
-  <details><summary>Neuen Feed hinzufügen</summary>
-    <form data-form="add-feed">
-      <label>Name <input name="name" required placeholder="z. B. JESP"></label>
-      <label>RSS-URL <input name="url" required placeholder="https://…/rss"></label>
-      <div class="row"><button type="button" data-act="test-feed">Feed testen</button><span id="testOut" class="muted"></span></div>
-      <button type="submit" style="width:auto;">Hinzufügen</button>
-    </form>
-  </details>
+    ${Object.keys(groups).length ? `<details ${c.feeds.length ? '' : 'open'}><summary>➕ Journals aus dem Katalog hinzufügen</summary>
+      <form data-form="catalog">
+        ${Object.entries(groups).map(([cat, items]) => `<fieldset><legend><strong>${esc(cat)}</strong></legend>
+          <div class="row" style="gap:1.25rem;">${items.map(j =>
+            `<label><input type="checkbox" name="catalog" value="${esc(j.url)}"> ${esc(j.name)}</label>`).join('')}</div>
+        </fieldset>`).join('')}
+        <button type="submit" style="width:auto;">Ausgewählte hinzufügen</button>
+      </form>
+    </details>` : ''}
 
-  ${Object.keys(groups).length ? `<details ${c.feeds.length ? '' : 'open'}><summary>Aus Katalog hinzufügen</summary>
-    <p class="muted">Bekannte Journals zum Anhaken – schneller als URLs raussuchen.</p>
-    <form data-form="catalog">
-      ${Object.entries(groups).map(([cat, items]) => `<fieldset><legend><strong>${esc(cat)}</strong></legend>
-        <div class="row" style="gap:1.25rem;">${items.map(j =>
-          `<label><input type="checkbox" name="catalog" value="${esc(j.url)}"> ${esc(j.name)}</label>`).join('')}</div>
-      </fieldset>`).join('')}
-      <button type="submit" style="width:auto;">Ausgewählte hinzufügen</button>
-    </form>
-  </details>` : ''}
+    <details><summary>➕ Anderes Journal per RSS-Link hinzufügen ${tip('Fast jedes Journal hat einen RSS-Feed: Auf der Journal-Website nach „RSS", „Feeds" oder dem orangen Feed-Symbol suchen (oft bei „Latest articles" oder „Alerts") und den Link kopieren.')}</summary>
+      <form data-form="add-feed">
+        <label>Name <input name="name" required placeholder="z. B. Journal of Experimental Social Psychology"></label>
+        <label>RSS-Link <input name="url" required placeholder="https://…"></label>
+        <div class="row"><button type="button" class="secondary" data-act="test-feed">Link testen</button><span id="testOut" class="muted"></span></div>
+        <button type="submit" style="width:auto;">Hinzufügen</button>
+      </form>
+    </details>
+  </section>
 
-  <details><summary>Import / Export (OPML)</summary>
-    <p class="muted">OPML ist das Standardformat für Feed-Listen – kompatibel mit Feedly, Inoreader &amp; Co.</p>
-    <label>OPML importieren <input type="file" data-file="opml" accept=".opml,.xml,text/xml"></label>
-    <button type="button" class="secondary outline" style="width:auto;" data-act="export-opml">⬇️ Feeds als OPML exportieren</button>
-  </details>
+  <section class="set">
+    <h3>🔍 Filter ${tip('Wörter werden in Titel und Abstract gesucht, Groß-/Kleinschreibung egal. Ein Wortanfang reicht: „depress" findet auch depression und depressive. Wort eintippen und Enter drücken.')}
+      <span class="saved muted" hidden>✓ gespeichert</span></h3>
+    <label class="term-label">Nur Artikel zeigen, die eines dieser Wörter enthalten <span class="muted">(leer = alle Artikel)</span></label>
+    ${chipsEditor('include', 'Wort eingeben + Enter, z. B. loneliness')}
+    <label class="term-label">Artikel mit diesen Wörtern ausblenden</label>
+    ${chipsEditor('exclude', 'Wort eingeben + Enter, z. B. erratum')}
+  </section>
 
-  <details><summary>Leseliste &amp; Status sichern / syncen</summary>
-    <p class="muted">Exportiert Leseliste, Notizen und Gelesen-Markierungen als JSON. Der Import <strong>führt zusammen</strong>
-      (überschreibt nichts) – auch Exporte aus der lokalen Python-Version funktionieren.</p>
-    <label>Status importieren <input type="file" data-file="state" accept=".json,application/json"></label>
-    <button type="button" class="secondary outline" style="width:auto;" data-act="export-state">⬇️ Status als JSON exportieren</button>
-  </details>
-
-  <details><summary>Allowlist (welche Feeds zeigen?)</summary>
-    <p class="muted">Leer = alle Feeds. Andernfalls erscheinen nur die angehakten.</p>
-    <form data-form="allowlist">
-      <div class="row" style="gap:1.25rem;">${c.feeds.map(f =>
-        `<label><input type="checkbox" name="allow" value="${esc(f.name)}" ${allow.has(f.name) ? 'checked' : ''}> ${esc(f.name)}</label>`).join('')}</div>
+  <section class="set">
+    <h3>💾 Sichern &amp; auf anderes Gerät übertragen ${tip('Deine Daten liegen nur in diesem Browser. Mit dem Backup sicherst du sie oder nimmst sie auf einen anderen Rechner oder Browser mit: dort einfach „Backup laden".')}</h3>
+    <p class="muted">Ein Backup enthält alles: deine Journals, Filter, die Leseliste mit Notizen und deine Likes/Skips
+      (fürs „Für mich"-Ranking). Laden <strong>ergänzt</strong> nur – es wird nichts überschrieben oder gelöscht.</p>
+    <div class="row">
+      <button type="button" data-act="export-state">⬇️ Backup herunterladen</button>
+      <label role="button" class="secondary outline file-btn">⬆️ Backup laden
+        <input type="file" data-file="state" accept=".json,application/json" hidden></label>
+    </div>
+    <details><summary>Journal-Liste für andere Feed-Reader (OPML) ${tip('OPML ist ein Standardformat für Feed-Listen. Das brauchst du nur, wenn du deine Journals in Feedly, Inoreader o. Ä. übernehmen willst – oder von dort hierher.')}</summary>
       <div class="row">
-        <button type="button" data-act="allow-all">Alle</button>
-        <button type="button" data-act="allow-none">Keine</button>
-        <button type="submit">Speichern</button>
+        <button type="button" class="secondary outline" data-act="export-opml">⬇️ Als OPML herunterladen</button>
+        <label role="button" class="secondary outline file-btn">⬆️ OPML laden
+          <input type="file" data-file="opml" accept=".opml,.xml,text/xml" hidden></label>
       </div>
+    </details>
+  </section>
+
+  <section class="set">
+    <h3>📄 PDF-Links ${tip('Der „📄 PDF"-Link sucht über den Dienst Unpaywall nach einer frei zugänglichen Version des Artikels. Unpaywall verlangt dafür eine E-Mail-Adresse; sie wird nur an Unpaywall geschickt. Ohne Adresse öffnet der Link die Verlagsseite.')}</h3>
+    <form data-form="unpaywall" class="row">
+      <input type="email" name="email" value="${esc(c.api.unpaywall_email || '')}" placeholder="E-Mail für Unpaywall (optional)"
+        aria-label="E-Mail für Unpaywall" style="flex:1;min-width:220px;margin:0;">
+      <button type="submit" class="secondary">Speichern</button>
     </form>
-  </details>
+  </section>
 
-  <details><summary>Filter (Regex)</summary>
-    <p class="muted">Je Zeile ein Muster. <code>include</code> wird ODER-verknüpft; nur Treffer werden angezeigt.
-      <code>exclude</code> wird verworfen. <code>(?i)</code> am Anfang = Groß-/Kleinschreibung egal.</p>
-    <form data-form="filters">
-      <label>Include-Muster <textarea name="include">${esc((c.filters.include || []).join('\n'))}</textarea></label>
-      <label>Exclude-Muster <textarea name="exclude">${esc((c.filters.exclude || []).join('\n'))}</textarea></label>
-      <button type="submit" style="width:auto;">Filter speichern</button>
-    </form>
-  </details>
+  <section class="set">
+    <h3>🎨 Darstellung</h3>
+    <label style="display:flex;align-items:center;gap:.5rem;">
+      <input type="checkbox" role="switch" data-toggle="anim" ${ls.get('animateCards') !== '0' ? 'checked' : ''}>
+      Karten beim Liken/Ausblenden wegfliegen lassen
+    </label>
+  </section>
 
-  <details ${proxyUrl() ? '' : 'open'}><summary>Feed-Proxy</summary>
-    <p class="muted">Browser dürfen Journal-Feeds nicht direkt abrufen (CORS). Ein kleiner Proxy reicht die Feeds
-      durch und speichert nichts. Auf Cloudflare bringt Pub.Crawl ihn selbst mit (<code>/proxy</code>).</p>
-    <form data-form="proxy">
-      <label>Proxy-URL (die Feed-URL wird angehängt)
-        <input name="proxy" value="${esc(c.proxy || '')}" placeholder="${esc(DEFAULT_PROXY)}">
-      </label>
-      <p class="muted">Leer lassen = Standard${DEFAULT_PROXY ? ` (<code>${esc(DEFAULT_PROXY)}</code>)` : ' (keiner eingerichtet)'}.</p>
-      <button type="submit" style="width:auto;">Speichern</button>
-    </form>
-  </details>
-
-  <details><summary>Open Access (Unpaywall)</summary>
-    <p class="muted">Für den „📄 PDF"-Link fragt Pub.Crawl Unpaywall nach einer frei verfügbaren Version. Unpaywall
-      verlangt dafür eine E-Mail-Adresse. Ohne Adresse führt der Link zur DOI-Seite.</p>
-    <form data-form="unpaywall">
-      <label>E-Mail <input type="email" name="email" value="${esc(c.api.unpaywall_email || '')}" placeholder="du@uni.de"></label>
-      <button type="submit" style="width:auto;">Speichern</button>
-    </form>
-  </details>
-
-  <h3>Darstellung</h3>
-  <label style="display:flex;align-items:center;gap:.5rem;">
-    <input type="checkbox" data-toggle="anim" ${ls.get('animateCards') !== '0' ? 'checked' : ''}>
-    Kartenbewegung beim Liken/Ausblenden animieren
-  </label>
-
-  <p class="muted" style="margin-top:2rem;">🔒 Feeds, Leseliste und Notizen liegen nur in diesem Browser auf diesem
-    Gerät. Wer die Browserdaten löscht, löscht sie mit. Sichere sie ab und zu per „Status als JSON exportieren".</p>`;
+  <p class="muted" style="margin-top:2rem;">🔒 Alles liegt nur in diesem Browser auf diesem Gerät – kein Konto, kein Server.
+    Wer die Browserdaten löscht, löscht auch Pub.Crawl. Lade ab und zu ein Backup herunter.</p>`;
 }
 
 function settingsMsg(m) {
@@ -815,8 +885,6 @@ function settingsMsg(m) {
   renderSettings();
   window.scrollTo({ top: 0 });
 }
-
-const lines = (s) => String(s || '').split('\n').map(x => x.trim()).filter(Boolean);
 
 async function onSettingsSubmit(ev) {
   ev.preventDefault();
@@ -826,13 +894,13 @@ async function onSettingsSubmit(ev) {
   switch (form.dataset.form) {
     case 'add-feed': {
       const name = String(fd.get('name')).trim(), url = String(fd.get('url')).trim();
-      if (c.feeds.some(f => f.name === name)) return settingsMsg('Name bereits vorhanden');
+      if (c.feeds.some(f => f.name === name)) return settingsMsg('Ein Journal mit diesem Namen gibt es schon');
       form.querySelector('[type=submit]').setAttribute('aria-busy', 'true');
       const p = await probeFeed(url, proxyUrl());
-      if (!p.ok) return settingsMsg(`Feed nicht abrufbar: ${p.error}`);
+      if (!p.ok) return settingsMsg(`Unter diesem Link wurde kein Feed gefunden (${p.error})`);
       c.feeds.push({ name, url });
       await save('config');
-      return settingsMsg(`Feed „${name}" hinzugefügt (${p.count} Einträge)`);
+      return settingsMsg(`„${name}" hinzugefügt (${p.count} Artikel)`);
     }
     case 'catalog': {
       const byUrl = new Map((await loadCatalog()).map(j => [j.url, j]));
@@ -844,32 +912,12 @@ async function onSettingsSubmit(ev) {
         n++;
       }
       await save('config');
-      return settingsMsg(`${n} Feed(s) aus dem Katalog hinzugefügt – im Feed geht's los.`);
-    }
-    case 'allowlist':
-      c.filters.journal_allowlist = fd.getAll('allow');
-      await save('config');
-      return settingsMsg('Allowlist gespeichert');
-    case 'filters': {
-      const inc = lines(fd.get('include')), exc = lines(fd.get('exclude'));
-      const bad = [...inc, ...exc].find(p => !compilePattern(p));
-      if (bad) return settingsMsg(`Ungültiges Regex-Muster: ${bad}`);
-      c.filters.include = inc;
-      c.filters.exclude = exc;
-      await save('config');
-      return settingsMsg('Filter gespeichert');
-    }
-    case 'proxy': {
-      const v = String(fd.get('proxy') || '').trim();
-      if (v && !/^(https?:\/\/|\/)/i.test(v)) return settingsMsg('Die Proxy-URL muss mit https:// beginnen');
-      c.proxy = v;
-      await save('config');
-      return settingsMsg(v ? 'Proxy gespeichert' : 'Proxy zurückgesetzt');
+      return settingsMsg(`${n} Journal(s) hinzugefügt – im Feed geht's los.`);
     }
     case 'unpaywall':
       c.api.unpaywall_email = String(fd.get('email') || '').trim();
       await save('config');
-      return settingsMsg('E-Mail gespeichert');
+      return settingsMsg(c.api.unpaywall_email ? 'E-Mail gespeichert' : 'E-Mail entfernt');
   }
 }
 
@@ -880,44 +928,65 @@ async function onSettingsClick(ev) {
   switch (b.dataset.act) {
     case 'remove-feed': {
       const name = b.dataset.name;
-      if (!confirm(`Feed „${name}" wirklich entfernen?`)) return;
+      if (!confirm(`„${name}" wirklich entfernen?`)) return;
       c.feeds = c.feeds.filter(f => f.name !== name);
-      c.filters.journal_allowlist = (c.filters.journal_allowlist || []).filter(n => n !== name);
       await save('config');
-      return settingsMsg(`Feed „${name}" entfernt`);
+      return settingsMsg(`„${name}" entfernt`);
     }
     case 'test-feed': {
       const out = $('#testOut');
       const url = b.form.elements.url.value.trim();
-      if (!url) { out.textContent = 'Bitte URL eingeben.'; return; }
+      if (!url) { out.textContent = 'Bitte Link eingeben.'; return; }
       out.textContent = 'Teste …';
       const p = await probeFeed(url, proxyUrl());
-      out.textContent = p.ok ? `OK – ${p.count} Einträge` : `Fehler: ${p.error}`;
+      out.textContent = p.ok ? `✓ funktioniert – ${p.count} Artikel` : `✕ kein Feed gefunden (${p.error})`;
       return;
     }
-    case 'allow-all': $$('input[name=allow]', b.form).forEach(cb => { cb.checked = true; }); return;
-    case 'allow-none': $$('input[name=allow]', b.form).forEach(cb => { cb.checked = false; }); return;
+    case 'term-del': {
+      const box = b.closest('.term-box');
+      b.closest('.term').remove();
+      saveTerms(box);
+      return;
+    }
     case 'export-opml': exportOpml(); return;
     case 'export-state': exportState(); return;
+  }
+}
+
+function onSettingsKeydown(ev) {
+  const input = ev.target.closest('.term-input');
+  if (!input) return;
+  if (ev.key === 'Enter' || ev.key === ',') { ev.preventDefault(); addTerm(input); }
+  else if (ev.key === 'Backspace' && !input.value) {       // Backspace im leeren Feld: letztes Wort weg
+    const last = input.previousElementSibling;
+    if (last?.classList.contains('term')) { last.remove(); saveTerms(input.closest('.term-box')); }
   }
 }
 
 async function onSettingsChange(ev) {
   const t = ev.target;
   if (t.dataset.toggle === 'anim') { ls.set('animateCards', t.checked ? '1' : '0'); return; }
+  if (t.dataset.toggle === 'feed') {
+    const f = state.config.feeds.find(x => x.name === t.dataset.name);
+    if (f) { if (t.checked) delete f.off; else f.off = true; }
+    t.closest('tr').classList.toggle('off', !t.checked);
+    await save('config');
+    return;
+  }
+  if (t.classList.contains('term-input')) { addTerm(t); return; }      // Feld verlassen = Wort übernehmen
   if (!t.dataset.file || !t.files?.[0]) return;
   try {
     const text = await t.files[0].text();
     if (t.dataset.file === 'opml') {
       const n = importOpml(text);
       await save('config');
-      settingsMsg(`${n} Feed(s) aus OPML importiert`);
+      settingsMsg(`${n} Journal(s) aus OPML übernommen`);
     } else {
-      const [s, r] = importState(text);
-      settingsMsg(`Status importiert: +${s} Leseliste, +${r} Gelesen`);
+      const [f, s, r] = importState(text);
+      settingsMsg(`Backup geladen: +${f} Journals, +${s} auf der Leseliste, +${r} Likes/Skips`);
     }
   } catch (e) {
-    settingsMsg(`Import fehlgeschlagen: ${e.message}`);
+    settingsMsg(`Laden fehlgeschlagen: ${e.message}`);
   }
 }
 
@@ -995,6 +1064,25 @@ function setupHandlers() {
   settings.addEventListener('submit', onSettingsSubmit);
   settings.addEventListener('click', onSettingsClick);
   settings.addEventListener('change', onSettingsChange);
+  settings.addEventListener('keydown', onSettingsKeydown);
+
+  // Hilfe-Bubbles am rechten Bildschirmrand nach links rücken, damit sie ganz sichtbar sind
+  const placeTip = (ev) => {
+    const t = ev.target.closest?.('.tip');
+    if (!t) return;
+    const w = Math.min(340, innerWidth * 0.78);
+    const overflow = t.getBoundingClientRect().left - 8 + w - (document.documentElement.clientWidth - 12);
+    t.style.setProperty('--tip-dx', `${Math.min(0, -overflow)}px`);
+  };
+  document.addEventListener('mouseover', placeTip);
+  document.addEventListener('focusin', placeTip);
+  // „?" in einer Aufklapp-Zeile: nur die Hilfe zeigen, nicht auf-/zuklappen
+  // Antippen schaltet die Bubble an/aus (Touch-Geräte); Tippen woanders schließt sie
+  document.addEventListener('click', (ev) => {
+    const t = ev.target.closest?.('.tip');
+    $$('.tip.open').forEach(x => { if (x !== t) x.classList.remove('open'); });
+    if (t) { ev.preventDefault(); placeTip(ev); t.classList.toggle('open'); }
+  });
 
   $('#help').addEventListener('click', (ev) => { if (ev.target.id === 'help') ev.target.classList.remove('show'); });
 
@@ -1037,6 +1125,16 @@ async function route() {
   if (view === 'feed') enrichInBackground();
 }
 
+// Alte Allowlist (nur diese Journals zeigen) → An/Aus-Schalter je Journal
+function migrateAllowlist() {
+  const allow = state.config.filters.journal_allowlist || [];
+  if (!allow.length) return;
+  for (const f of state.config.feeds) if (!allow.includes(f.name)) f.off = true;
+  state.config.filters.journal_allowlist = [];
+  save('config');
+}
+
 setupHandlers();
 await loadState();
+migrateAllowlist();
 await route();

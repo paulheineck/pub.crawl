@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Impressum &amp; Datenschutz – Pub.Crawl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  <link rel="stylesheet" href="vendor/pico.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <style>
+    main.page { max-width: 760px; }
+    main.page h2 { margin-top: 2.4rem; }
+    main.page h3 { margin-top: 1.6rem; font-size: 1.05rem; }
+    .back { display: inline-block; margin: 1.2rem 0 .4rem; }
+  </style>
+</head>
+<body>
+<main class="container page">
+  <a class="back" href="./">← zurück zu Pub.Crawl</a>
+
+  <h1 id="impressum">Impressum</h1>
+  <p>Angaben gemäß § 5 Digitale-Dienste-Gesetz (DDG)</p>
+  <p>
+    <!-- TODO: vor dem Veröffentlichen ausfüllen -->
+    [Vorname Nachname]<br>
+    [Straße Hausnummer]<br>
+    [PLZ Ort]<br>
+    E-Mail: [kontakt@pub-crawl.app]
+  </p>
+  <p>Pub.Crawl ist ein privates, nicht-kommerzielles Open-Source-Projekt
+    (<a href="https://github.com/paulheineck/readr" target="_blank" rel="noopener">Quellcode auf GitHub</a>).
+    Es gibt keine Werbung, keine Bezahlfunktionen und keine Nutzerkonten.</p>
+  <p class="muted">Die angezeigten Artikel, Titel und Abstracts stammen aus den öffentlichen RSS-Feeds der jeweiligen
+    Verlage bzw. aus den offenen Datenbanken CrossRef und OpenAlex. Für Inhalte verlinkter Seiten sind ausschließlich
+    deren Betreiber verantwortlich.</p>
+
+  <h1 id="datenschutz" style="margin-top:3rem;">Datenschutzerklärung</h1>
+
+  <h2>Kurz gesagt</h2>
+  <ul>
+    <li>Kein Konto, keine Cookies, kein Tracking, keine Analyse-Tools, keine Werbung.</li>
+    <li>Deine Journals, Leseliste, Notizen und Likes werden <strong>nur in deinem Browser</strong> gespeichert.
+      Wir können sie nicht sehen.</li>
+    <li>Damit die App funktioniert, fragt dein Browser einige wissenschaftliche Datenbanken direkt an (siehe unten).</li>
+  </ul>
+
+  <h2>Verantwortlicher</h2>
+  <p>Verantwortlich für die Datenverarbeitung auf dieser Website ist die im <a href="#impressum">Impressum</a>
+    genannte Person.</p>
+
+  <h2>Hosting</h2>
+  <p>Diese Website wird über Cloudflare Workers bereitgestellt (Cloudflare, Inc., 101 Townsend St., San Francisco,
+    CA 94107, USA). Beim Aufruf verarbeitet Cloudflare technisch notwendige Verbindungsdaten – insbesondere deine
+    IP-Adresse, Datum und Uhrzeit, die aufgerufene Adresse und Browser-Informationen –, um die Seite auszuliefern und
+    vor Angriffen zu schützen. Pub.Crawl selbst schaltet keine Zugriffsprotokolle ein und speichert keine Daten über
+    Besucher. Rechtsgrundlage ist unser berechtigtes Interesse an einer sicheren und funktionsfähigen Bereitstellung
+    (Art. 6 Abs. 1 lit. f DSGVO). Mit Cloudflare besteht ein Vertrag zur Auftragsverarbeitung; Cloudflare ist unter dem
+    EU-U.S. Data Privacy Framework zertifiziert. Mehr dazu in der
+    <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Datenschutzerklärung von Cloudflare</a>.</p>
+
+  <h2>Speicherung in deinem Browser</h2>
+  <p>Pub.Crawl speichert deine Journal-Auswahl, Filter, Leseliste, Notizen, Likes/Skips und Anzeige-Einstellungen
+    im lokalen Speicher deines Browsers (IndexedDB und localStorage). Diese Daten verlassen dein Gerät nicht und werden
+    nicht an uns übertragen. Die Speicherung ist für die von dir gewünschte Funktion unbedingt erforderlich
+    (§ 25 Abs. 2 Nr. 2 TDDDG). Du kannst sie jederzeit löschen, indem du die Websitedaten von pub-crawl.app in deinem
+    Browser löschst.</p>
+
+  <h2>Abruf der Journal-Feeds</h2>
+  <p>Die RSS-Feeds der Journals ruft dein Browser über unseren Server (<code>pub-crawl.app/proxy</code>) ab, weil
+    Browser fremde Feeds nicht direkt laden dürfen. Der Verlag sieht dabei nur den Server von Cloudflare, nicht deine
+    IP-Adresse. Welche Journals du liest, wird nicht gespeichert; zwischengespeichert werden für zehn Minuten nur die
+    Feed-Inhalte selbst, ohne Bezug zu dir.</p>
+
+  <h2>Direkte Anfragen an wissenschaftliche Datenbanken</h2>
+  <p>Um Abstracts, Autoren, DOIs und Zitationen zu ergänzen, fragt dein Browser die folgenden Dienste direkt an. Dabei
+    erhalten sie – wie bei jedem Website-Aufruf – deine IP-Adresse sowie den Titel bzw. die DOI des jeweiligen Artikels.
+    Rechtsgrundlage ist die Bereitstellung der von dir genutzten Funktion (Art. 6 Abs. 1 lit. b und f DSGVO).</p>
+  <ul>
+    <li><strong>Crossref</strong> (api.crossref.org) – Crossref, USA.
+      <a href="https://www.crossref.org/operations-and-sustainability/privacy/" target="_blank" rel="noopener">Datenschutz</a></li>
+    <li><strong>OpenAlex</strong> (api.openalex.org) – OurResearch, USA.
+      <a href="https://openalex.org/privacy-policy" target="_blank" rel="noopener">Datenschutz</a></li>
+    <li><strong>Unpaywall</strong> (api.unpaywall.org) – OurResearch, USA. Nur wenn du auf „📄 PDF" klickst und in den
+      Einstellungen eine E-Mail-Adresse hinterlegt hast; Unpaywall erhält dann auch diese Adresse.</li>
+  </ul>
+  <p>Links zu Google Scholar, zu den Verlagsseiten und zu doi.org werden erst geöffnet, wenn du sie anklickst. Ab dann
+    gelten die Datenschutzbestimmungen der jeweiligen Website.</p>
+
+  <h2>Deine Rechte</h2>
+  <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Einschränkung der Verarbeitung deiner Daten, auf
+    Datenübertragbarkeit sowie auf Widerspruch (Art. 15–21 DSGVO). Da wir selbst keine personenbezogenen Daten über dich
+    speichern, sind die meisten dieser Rechte schon dadurch erfüllt; wende dich bei Fragen gern an die oben genannte
+    Adresse. Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren.</p>
+
+  <p class="muted" style="margin-top:2rem;">Stand: Oktober 2026</p>
+
+  <footer class="site">
+    <a href="./">Pub.Crawl</a> ·
+    <a href="hilfe.html">Anleitung</a> ·
+    <a href="https://github.com/paulheineck/readr" target="_blank" rel="noopener">Open Source auf GitHub</a>
+  </footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Anleitung – Pub.Crawl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  <link rel="stylesheet" href="vendor/pico.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <style>
+    main.page { max-width: 760px; }
+    main.page h2 { margin-top: 2.2rem; }
+    main.page kbd { font-size: .8rem; }
+    .back { display: inline-block; margin: 1.2rem 0 .4rem; }
+  </style>
+</head>
+<body>
+<main class="container page">
+  <a class="back" href="./">← zurück zu Pub.Crawl</a>
+  <h1>📰 So funktioniert Pub.Crawl</h1>
+  <p>Pub.Crawl sammelt die neuesten Artikel deiner Lieblings-Journals an einem Ort. Du gehst sie wie einen
+    Kartenstapel durch: Interessantes kommt auf die Leseliste, der Rest verschwindet. Kein Konto, keine Installation.</p>
+
+  <h2>1. Journals auswählen</h2>
+  <p>Unter <strong>⚙ Einstellungen → Journals aus dem Katalog hinzufügen</strong> hakst du an, was du lesen willst,
+    sortiert nach Fachbereich. Fehlt ein Journal, kannst du es per RSS-Link selbst hinzufügen (siehe unten).
+    Mit dem Schalter neben jedem Journal blendest du es vorübergehend aus, ohne es zu löschen.</p>
+
+  <h2>2. Den Stapel durchgehen</h2>
+  <ul>
+    <li><strong>♥</strong> – auf die Leseliste. <strong>✕</strong> – ausblenden.</li>
+    <li>Versehentlich geklickt? Unten erscheint kurz <strong>Rückgängig</strong>.</li>
+    <li><strong>mehr ▾</strong> klappt den ganzen Abstract auf.</li>
+    <li>Oben wechselst du zwischen <strong>🃏 Stapel</strong> und <strong>📄 Liste</strong>, und mit
+      <strong>↻</strong> lädst du die Journals neu.</li>
+    <li>Tastatur: <kbd>l</kbd> merken, <kbd>d</kbd> ausblenden, <kbd>/</kbd> suchen, <kbd>?</kbd> alle Kürzel.</li>
+  </ul>
+  <p>Abstracts und Autoren werden nach dem Laden im Hintergrund ergänzt – manche Karten füllen sich also erst nach
+    ein paar Sekunden.</p>
+
+  <h2>3. Sortierung: Zufall, Neueste, Für mich</h2>
+  <p>Der Knopf rechts neben der Suche wechselt die Reihenfolge. <strong>🧠 Für mich</strong> wird freigeschaltet,
+    sobald du mindestens 10 Artikel gemerkt und 10 ausgeblendet hast: Pub.Crawl lernt aus deinen Entscheidungen, welche
+    Themen dich interessieren, und zeigt passende Artikel zuerst. Die 🧠-Stichwörter an einer Karte verraten, warum sie
+    weit oben steht. Das Lernen passiert komplett in deinem Browser.</p>
+
+  <h2>4. Die Leseliste</h2>
+  <ul>
+    <li><strong>📝 Notiz</strong> – eigene Gedanken oder <code>#tags</code>, wird automatisch gespeichert.</li>
+    <li><strong>📄 PDF</strong> – sucht eine frei zugängliche Version (dafür in den Einstellungen eine E-Mail für
+      Unpaywall eintragen; ohne öffnet sich die Verlagsseite).</li>
+    <li><strong>Cite (RIS)</strong> – Zitation für Zotero, EndNote, Citavi, Mendeley.
+      <strong>⬇️ Exportieren</strong> lädt die ganze Leseliste auf einmal.</li>
+    <li><strong>🗑</strong> – von der Leseliste entfernen.</li>
+  </ul>
+
+  <h2>5. Filter</h2>
+  <p>In den Einstellungen trägst du Wörter ein, die Titel oder Abstract enthalten sollen (<em>„nur Artikel mit …"</em>)
+    oder nicht enthalten dürfen (<em>„ausblenden"</em>). Groß-/Kleinschreibung ist egal, ein Wortanfang reicht:
+    <code>depress</code> findet auch <em>depression</em> und <em>depressive</em>. Treffer werden in den Karten
+    markiert. Solange ein Filter aktiv ist, steht oben im Feed ein Hinweis.</p>
+
+  <h2>6. Deine Daten &amp; Backup</h2>
+  <p>Alles – Journals, Leseliste, Notizen, Likes – liegt <strong>nur in deinem Browser auf diesem Gerät</strong>.
+    Es gibt keinen Server, der etwas über dich speichert. Das heißt aber auch:</p>
+  <ul>
+    <li>Löschst du die Browserdaten, ist auch Pub.Crawl leer. Lade deshalb ab und zu unter
+      <strong>Einstellungen → Backup herunterladen</strong> eine Sicherung.</li>
+    <li>Auf einem anderen Rechner oder Browser startest du leer. Lade dort einfach dein Backup
+      (<strong>Backup laden</strong>). Das ergänzt nur, es überschreibt nichts.</li>
+    <li>Im privaten Fenster wird nichts dauerhaft gespeichert.</li>
+  </ul>
+
+  <h2>Häufige Fragen</h2>
+  <details>
+    <summary>Ein Journal fehlt im Katalog – wie füge ich es hinzu?</summary>
+    <p>Fast jedes Journal hat einen RSS-Feed. Such auf der Journal-Website nach „RSS", „Feeds" oder dem orangen
+      Feed-Symbol (oft bei „Latest articles" oder „Alerts"), kopiere den Link und füge ihn unter
+      <strong>Einstellungen → Anderes Journal per RSS-Link hinzufügen</strong> ein. Mit <em>Link testen</em> siehst du
+      sofort, ob es klappt.</p>
+  </details>
+  <details>
+    <summary>Bei manchen Artikeln fehlt der Abstract.</summary>
+    <p>Pub.Crawl holt Abstracts aus den Feeds und – falls dort keiner steht – von CrossRef und OpenAlex. Manche Verlage
+      geben Abstracts nirgends frei heraus, und bei Editorials oder Kommentaren gibt es oft schlicht keinen.</p>
+  </details>
+  <details>
+    <summary>Ein Journal ist „nicht erreichbar".</summary>
+    <p>Meist ist die Website des Verlags kurz gestört – beim nächsten Neuladen klappt es in der Regel wieder. Bleibt
+      der Fehler, hat der Verlag die Feed-Adresse geändert; dann das Journal entfernen und mit dem neuen Link
+      hinzufügen.</p>
+  </details>
+  <details>
+    <summary>Geht das auch auf dem Handy?</summary>
+    <p>Ja. Tipp: Im Browser-Menü „Zum Startbildschirm hinzufügen" – dann startet Pub.Crawl wie eine App. Die Daten
+      auf Handy und Rechner sind getrennt; per Backup kannst du sie übertragen.</p>
+  </details>
+  <details>
+    <summary>Gibt es Pub.Crawl auch zum Installieren?</summary>
+    <p>Ja – als lokale Python-Version für Windows, Mac und Linux, siehe
+      <a href="https://github.com/paulheineck/readr" target="_blank" rel="noopener">GitHub</a>. Backups lassen sich
+      zwischen beiden Versionen austauschen.</p>
+  </details>
+
+  <footer class="site">
+    <a href="./">Pub.Crawl</a> ·
+    <a href="https://github.com/paulheineck/readr" target="_blank" rel="noopener">Open Source auf GitHub</a> ·
+    <a href="impressum.html">Impressum &amp; Datenschutz</a>
+  </footer>
+</main>
+</body>
+</html>

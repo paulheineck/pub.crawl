@@ -58,7 +58,10 @@ If you edit `journals.yaml`, regenerate the catalog with
 
 ```
 web/
-  index.html, style.css     page + styles (Pico.css)
+  index.html, style.css     page + styles
+  hilfe.html                user guide (German)
+  impressum.html            legal notice + privacy policy (fill in your details!)
+  vendor/pico.min.css       Pico.css 2.0.6, self-hosted (no third-party CDN)
   js/app.js                 views, deck, reading list, settings
   js/feeds.js               fetch + parse RSS/Atom, filters, IDs
   js/meta.js                CrossRef / OpenAlex / Unpaywall, RIS
