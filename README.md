@@ -1,16 +1,17 @@
 # Pub.Crawl
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
+[![Web app](https://img.shields.io/badge/web%20app-pub--crawl.app-1d4e89.svg)](https://pub-crawl.app)
 <!-- Nach dem Zenodo-Release hier den DOI-Badge einsetzen:
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX) -->
 
-A local web app for staying current with the literature. Pub.Crawl aggregates
-journal RSS feeds, lets you triage new papers by swiping through a card stack,
-and keeps the ones you want in a reading list. It runs entirely on your machine;
-no account, no server, no data leaves your computer.
+Pub.Crawl helps you stay current with the literature. It aggregates journal RSS
+feeds, lets you triage new papers by swiping through a card stack, and keeps the
+ones you want in a reading list. It just crawls all the publications you want.
 
-The name is a pun: a *pub crawl* through new *publications*.
+**→ Use it in your browser: [pub-crawl.app](https://pub-crawl.app)** — no install,
+no account. Everything you do stays in your browser. On a phone, add it to the
+home screen and it behaves like an app. ([Guide in German](https://pub-crawl.app/hilfe.html))
 
 ---
 
@@ -26,26 +27,41 @@ The name is a pun: a *pub crawl* through new *publications*.
 
 ## What it does
 
-- Reads multiple RSS/Atom feeds (journals, preprint servers) in parallel and caches them.
-- Two views for the feed: a swipeable **card stack** (default) and a plain **list**.
-- **Like** adds a paper to the reading list, **skip** hides it; both are undoable.
-- Sort by shuffle, newest-first, or **relevance** — a local model that learns from
-  your likes and skips. It unlocks once there is enough data and shows which words
-  made a paper match.
-- Fills in **full abstracts and clean author lists** from CrossRef (with an OpenAlex
-  fallback) when a feed only ships a citation stub. Publisher boilerplate is stripped.
-- Per-paper links: Open Access via Unpaywall, Google Scholar, and RIS export for citation managers.
-- Reading list with free-text notes / `#tags` and full-list RIS export.
-- Built-in catalog of psychology journal feeds; add feeds by checkbox, OPML, or manually.
-- Move reading-list and read state between machines via JSON export/import (merge, not overwrite).
-- Broken feeds are flagged; `verify_feeds.py` checks the catalog for dead URLs.
-- Small extras: daily streak, "seen today" counter, dark/light mode, keyboard shortcuts.
+- Reads 100+ curated psychology journals (social, cognitive, eye movements/gaze,
+  clinical, developmental, …) or any RSS/Atom feed you add.
+- Two views: a **card stack** (swipe right to keep, left to skip — on phones by
+  finger) and a plain **list**. Everything is undoable.
+- Sort by shuffle, newest-first, or **relevance** — a model that learns from your
+  likes and skips, right in your browser, and shows which words made a paper match.
+- Fills in **full abstracts and clean author lists** from CrossRef and OpenAlex when
+  a feed only ships a citation stub; publisher boilerplate is filtered out.
+- Per-paper links: Open Access via Unpaywall, Google Scholar, RIS export for
+  citation managers, and sharing on phones.
+- Reading list with notes, `#tags`, and a to-read / read split; full-list RIS export.
+- Word filters ("only papers mentioning …", "hide papers mentioning …").
+- One-file backup to move everything to another device or browser.
+- Small extras: daily streak, dark/light mode, keyboard shortcuts.
 
-State lives in a local SQLite database. Configuration is a single YAML file.
+## Two versions
+
+| | **Browser** ([pub-crawl.app](https://pub-crawl.app)) | **Local** (Python) |
+|---|---|---|
+| Setup | none | Python + start script |
+| Data | your browser (per device) | `dashboard.db` on your disk |
+| Status | main version, actively developed | stable, feature-frozen |
+
+The browser version lives in [`web/`](web/) (static files + a tiny Cloudflare
+Worker that relays journal feeds). Backups can be moved between both versions.
+The rest of this README describes the **local version**.
 
 ---
 
-## Install
+## Local version
+
+A Flask app that runs entirely on your machine; no data leaves your computer.
+State lives in a local SQLite database, configuration is a single YAML file.
+
+### Install
 
 ```bash
 git clone https://github.com/paulheineck/readr.git
@@ -56,7 +72,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Run
+### Run
 
 Use the launcher for your OS — it sets up the virtual environment, installs
 dependencies, waits for the server, and opens the browser:
@@ -80,11 +96,12 @@ screen; results are cached afterwards.
 
 ---
 
-## Configuration
+### Configuration
 
 Feeds and filters live in `config.yaml`, but you rarely need to edit it by hand —
 the **Settings** page covers adding feeds, the catalog, OPML, the allowlist, and
-regex filters. The file looks like this:
+regex filters. (Journals that are only available via CrossRef — marked without a
+`url` in `journals.yaml` — appear only in the browser version.) The file looks like this:
 
 ```yaml
 feeds:
@@ -112,7 +129,7 @@ api:
 
 ---
 
-## Keyboard shortcuts
+### Keyboard shortcuts
 
 | Key | Action |
 |---|---|
@@ -124,7 +141,7 @@ api:
 
 ---
 
-## Project layout
+### Project layout
 
 ```
 ├── app.py                # Flask backend (feeds, metadata, relevance, routes)
@@ -135,22 +152,22 @@ api:
 ├── config.example.yaml   # template, copied to config.yaml on first run
 ├── journals.yaml         # curated journal catalog
 ├── verify_feeds.py       # checks catalog feeds for reachability
+├── web/                  # browser version (pub-crawl.app), see web/README.md
 ├── start Windows.bat / start Mac.sh / start Linux.sh
 ├── requirements.txt
 └── dashboard.db          # local state (auto-created, gitignored)
 ```
 
-## Dependencies
+### Dependencies
 
 Flask · feedparser · PyYAML · beautifulsoup4 · requests · python-dateutil · APScheduler
 
 ---
 
-## Notes
+### Notes
 
-- Elsevier feeds (e.g. Cognition) do not expose abstracts through any source, so
-  those stay title-only. Everything else (APA, SAGE, Wiley, Taylor & Francis, …)
-  is enriched automatically.
+- Some publishers (e.g. Elsevier, Springer) don't share abstracts in their feeds;
+  Pub.Crawl then falls back to CrossRef/OpenAlex, which covers most but not all papers.
 - Abstract/metadata lookups are cached for 7 days in `dashboard.db`.
 - Set `FLASK_DEBUG=1` to run in debug mode; otherwise it runs with debug off.
 
@@ -164,9 +181,9 @@ If Pub.Crawl is useful for your work, a citation is appreciated. GitHub shows a
 ```bibtex
 @software{heineck_pubcrawl,
   author  = {Heineck, Paul},
-  title   = {Pub.Crawl — A Local Research Feed Reader},
+  title   = {Pub.Crawl — A Research Feed Reader},
   year    = {2026},
-  url     = {https://github.com/paulheineck/readr},
+  url     = {https://pub-crawl.app},
   version = {1.0.0},
   doi     = {10.5281/zenodo.XXXXXXX}
 }
