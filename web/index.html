@@ -5,7 +5,13 @@
   <title>Pub.Crawl</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Pub.Crawl – neue Journal-Artikel im Browser sichten. Alle Daten bleiben in deinem Browser.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1d4e89">
+  <meta name="apple-mobile-web-app-title" content="Pub.Crawl">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="stylesheet" href="vendor/pico.min.css">
   <link rel="stylesheet" href="style.css">
   <script>
@@ -26,7 +32,7 @@
 
   <main class="container">
     <header>
-      <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+      <div class="brand">
         <h1>📰 Pub.Crawl</h1>
         <nav>
           <a href="#feed" data-nav="feed">Feed</a>
@@ -35,11 +41,12 @@
         </nav>
       </div>
       <div class="rightside">
-        <input id="q" placeholder="Suche in Titel & Abstract" aria-label="Suche">
-        <button id="sortBtn" class="hbtn feed-only" type="button" title="Sortierung umschalten">🔀 Zufall</button>
-        <button id="viewBtn" class="hbtn feed-only" type="button" title="Liste/Stapel umschalten">🃏 Stapel</button>
-        <button id="refreshBtn" class="hbtn icon feed-only" type="button" title="Feeds jetzt neu laden">↻</button>
-        <button id="themeBtn" class="hbtn icon" type="button" title="Theme umschalten">🌓</button>
+        <input id="q" type="search" placeholder="Suchen …" title="Sucht in Titel, Abstract, Autoren und Notizen" aria-label="Suche">
+        <button id="searchBtn" class="hbtn icon" type="button" title="Suchen" aria-label="Suchen">🔍</button>
+        <button id="sortBtn" class="hbtn feed-only" type="button" title="Sortierung umschalten">🔀 <span class="lbl">Zufall</span></button>
+        <button id="viewBtn" class="hbtn feed-only" type="button" title="Liste/Stapel umschalten">🃏 <span class="lbl">Stapel</span></button>
+        <button id="refreshBtn" class="hbtn icon feed-only" type="button" title="Journals neu laden" aria-label="Neu laden">↻</button>
+        <button id="themeBtn" class="hbtn icon" type="button" title="Hell/Dunkel umschalten" aria-label="Hell/Dunkel umschalten">🌓</button>
       </div>
     </header>
 
@@ -59,8 +66,11 @@
       </article>
 
       <h3 id="listTitle" style="margin:1rem 0 .6rem 0;"></h3>
+      <div id="tagbar" hidden></div>
       <a id="exportStars" href="#" class="secondary outline" hidden
          title="Lädt deine ganze Leseliste als RIS-Datei – direkt importierbar in Zotero, EndNote, Citavi, Mendeley …">⬇️ Exportieren</a>
+
+      <button id="newPill" class="new-pill" type="button" hidden></button>
 
       <div id="statusbar" hidden><span id="statustext"></span></div>
 

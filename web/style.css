@@ -3,22 +3,36 @@
 [hidden] { display: none !important; }
 main.container { max-width: 1080px; }
 header {
-  position: sticky; top: 0; z-index: 3;
+  position: sticky; top: 0; z-index: 70;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
   gap: .6rem; padding: .65rem 0 .75rem 0;
-  backdrop-filter: blur(2px);
-  background: linear-gradient(to bottom,
-    color-mix(in hsl, var(--background-color) 94%, transparent) 88%, transparent 100%);
-  border-bottom: 1px solid var(--muted-border-color);
+  background: color-mix(in srgb, var(--pico-background-color, #fff) 94%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--pico-muted-border-color, rgba(127,127,127,.2));
 }
-.authors { margin: .1rem 0 .25rem 0; font-size: .95rem; color: var(--muted-color); }
-header h1 { margin: 0; font-size: 1.2rem; }
+.authors { margin: .1rem 0 .25rem 0; font-size: .95rem; color: var(--pico-muted-color, #777); }
+header .brand { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+header h1 { margin: 0; font-size: 1.2rem; white-space: nowrap; }
 header nav { display: flex; gap: .4rem; align-items: center; }
-header .rightside { display: flex; gap: .5rem; flex: 1; justify-content: flex-end; }
-#q { flex: 1; min-width: 220px; max-width: 340px; }
+header .rightside { display: flex; gap: .5rem; flex: 1; justify-content: flex-end; align-items: center; }
+#q { flex: 1; min-width: 220px; max-width: 340px; margin: 0; }
+#searchBtn { display: none; }
+
+/* Handy: Zeile 1 Logo + Symbol-Knöpfe, Zeile 2 Navigation, Suche nur nach Tippen auf 🔍 */
 @media (max-width: 600px) {
-  header .rightside { flex-wrap: wrap; justify-content: flex-start; }
-  #q { flex-basis: 100%; max-width: none; min-width: 0; }
+  header { gap: .45rem .4rem; padding: .5rem 0 .55rem; }
+  header .brand, header .rightside { display: contents; }
+  header h1 { order: 1; flex: 1; font-size: 1.1rem; }
+  header .hbtn { order: 2; height: 2.2rem; }
+  header .hbtn.icon, #sortBtn, #viewBtn { width: 2.2rem; padding: 0; font-size: 1.05rem; }
+  #sortBtn .lbl, #viewBtn .lbl { display: none; }
+  #searchBtn { display: inline-flex; }
+  header nav { order: 3; flex-basis: 100%; gap: 1.2rem; justify-content: flex-start; font-size: .92rem; }
+  body.deck #list { margin-top: .7rem; }
+  header nav a { padding: .1rem 0; }
+  #q { order: 4; display: none; flex-basis: 100%; min-width: 0; max-width: none; }
+  header.searching #q:not([hidden]) { display: block; }
+  header.searching #searchBtn { border-color: var(--pico-primary, #0172ad); }
 }
 
 .meta { color: var(--muted-color); font-size: .92rem; }
@@ -94,6 +108,7 @@ header .rightside { display: flex; gap: .5rem; flex: 1; justify-content: flex-en
 #toast {
   position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%) translateY(2rem);
   display: flex; align-items: center; gap: 1rem;
+  width: max-content; max-width: calc(100vw - 2rem);   /* sonst nur halbe Breite (left: 50%) */
   padding: .6rem 1rem; border-radius: 12px;
   background: var(--contrast, #222); color: var(--contrast-inverse, #fff);
   box-shadow: 0 6px 20px rgba(0,0,0,.25);
@@ -382,3 +397,41 @@ body.deck .item.d0 .swipe-hint.skip {
   right: 1.1rem; color: #d6334b; transform: rotate(10deg);
   opacity: clamp(0, calc(var(--swipe, 0) * -1.6), 1);
 }
+
+/* ---- „Neue Artikel"-Knopf und laufendes Neuladen ------------------------------ */
+.new-pill {
+  display: block; width: auto; margin: .2rem auto .8rem; padding: .4rem 1rem;
+  border-radius: 999px; font-size: .88rem; box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.hbtn.spinning { animation: pc-spin 1s linear infinite; pointer-events: none; }
+.hbtn[aria-busy=true]::before { display: none; }          /* Picos eigenen Lade-Kreisel aus */
+@keyframes pc-spin { to { transform: rotate(360deg); } }
+
+/* ---- Leseliste: Reiter, Tags, Knöpfe ----------------------------------------- */
+#listTitle { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--pico-muted-border-color, rgba(127,127,127,.3)); border-radius: 999px; overflow: hidden; }
+.seg button {
+  all: unset; cursor: pointer; padding: .3rem .85rem; font-size: .85rem; font-weight: 500;
+  color: var(--pico-muted-color, #777);
+}
+.seg button[aria-selected=true] { background: var(--pico-primary-background, #0172ad); color: var(--pico-primary-inverse, #fff); }
+.seg button:focus-visible { outline: 2px solid var(--pico-primary, #0172ad); outline-offset: -2px; }
+#tagbar { display: flex; flex-wrap: wrap; gap: .4rem; margin: -.2rem 0 .9rem; }
+#tagbar .tag {
+  all: unset; cursor: pointer; padding: .15rem .6rem; border-radius: 999px; font-size: .82rem;
+  border: 1px solid var(--pico-muted-border-color, rgba(127,127,127,.35)); color: var(--pico-muted-color, #777);
+}
+#tagbar .tag.active { border-color: var(--pico-primary, #0172ad); color: var(--pico-primary, #0172ad); font-weight: 600; }
+.card-tools { position: absolute; top: .55rem; right: .55rem; display: flex; gap: .2rem; }
+.card-tools button {
+  width: 2rem; height: 2rem; padding: 0; margin: 0; line-height: 1; font-size: 1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid transparent; background: none;
+  color: var(--pico-muted-color, #777); cursor: pointer; opacity: .65;
+}
+.card-tools button:hover { opacity: 1; border-color: var(--pico-muted-border-color, rgba(127,127,127,.4)); }
+.card-tools [data-act=done]:hover { color: #1a9e4b; border-color: #1a9e4b; }
+.card-tools .trash:hover { background: color-mix(in hsl, #d33 14%, transparent); border-color: color-mix(in hsl, #d33 50%, transparent); }
+.item-star h4 { padding-right: 4.6rem; }
+
+#view-settings .catalog-search { margin: .3rem 0 1rem; }

@@ -28,8 +28,9 @@ let whyById = new Map();      // nur im Modus „Für mich"
 let includeRes = [], excludeRes = [];
 let hiddenByFilter = 0;
 let initialCount = 0, lastN = 0, _remaining = 0, _searching = false;
-let enriching = false, enrichRetries = 0;
+let enriching = false, enrichRetries = 0, refreshing = false;
 let flash = '';
+let starsTab = 'open';        // Leseliste: 'open' (zu lesen) | 'done' (gelesen)
 let catalogCache = null;
 
 const proxyUrl = () => (state.config.proxy || DEFAULT_PROXY || '').trim();
@@ -84,12 +85,38 @@ async function fetchAllFeeds() {
   const ctx = { includeRes: [], excludeRes: [], maxItems: c.display.max_items_per_feed || 30, proxy: proxyUrl() };
   const items = await Promise.all(feeds.map(f => fetchOneFeed(f, ctx)));
   items.sort((a, b) => a.name.localeCompare(b.name));
-  for (const f of items) for (const e of f.entries) {
-    if (e.doi && needsMeta(e)) applyMeta(e, state.meta[e.doi]);   // schon bekannte Abstracts sofort
+
+  // Mit dem bisherigen Stand zusammenführen: bekannte Artikel behalten ihre schon
+  // geladenen Abstracts/Autoren; ein Feed mit kurzem Aussetzer behält seine alten Artikel.
+  const prev = new Map((state.feedCache?.items || []).map(f => [f.name, f]));
+  const known = new Map();
+  for (const f of prev.values()) for (const e of f.entries) known.set(e.id, e);
+  for (const f of items) {
+    const old = prev.get(f.name);
+    if (f.error) {
+      f.entries = old?.entries || [];
+      f.fails = (old?.fails || 0) + 1;
+      continue;
+    }
+    f.fails = 0;
+    f.entries = f.entries.map(e => {
+      const o = known.get(e.id);
+      if (!e.doi && o?.doi) e.doi = o.doi;                       // per Titelsuche gefundene DOI
+      if (e.doi && needsMeta(e)) applyMeta(e, state.meta[e.doi]);  // bekannte Abstracts sofort
+      if (!o) return e;
+      // Frische Feed-Daten gelten (Korrekturen kommen an), Anreicherung kommt aus dem Cache.
+      // Gleiches Objekt behalten, damit offene Karten weiter aktualisiert werden.
+      e.enriched = !!o.enriched && (!e.doi || !!state.meta[e.doi] || !needsMeta(e));
+      return Object.assign(o, e);
+    });
   }
   state.feedCache = { ts: Date.now(), configKey: configKey(), items };
   await save('feedCache');
 }
+
+// Warnung erst, wenn ein Journal zweimal in Folge scheitert – oder noch nie geladen hat.
+// Einzelne Aussetzer beim Verlag bleiben so unsichtbar.
+const feedBroken = (f) => !!f.error && ((f.fails || 0) >= 2 || !f.entries.length);
 
 async function pool(items, n, fn) {
   let i = 0;
@@ -135,7 +162,8 @@ async function enrichInBackground() {
   if (left && enrichRetries++ < 3) setTimeout(enrichInBackground, 60000);
 }
 
-async function refresh() {
+// Erster Start ohne gespeicherten Stand: Ladebildschirm
+async function firstLoad() {
   $('#loading').hidden = false;
   try { await fetchAllFeeds(); }
   finally { $('#loading').hidden = true; }
@@ -144,9 +172,50 @@ async function refresh() {
   enrichInBackground();
 }
 
+// Neu laden im Hintergrund – der Stapel bleibt benutzbar.
+// rerender: danach neu mischen (↻-Knopf, geänderte Journal-Auswahl);
+// sonst nur „↻ N neue Artikel" anbieten, damit nichts unter dem Finger wegspringt.
+async function backgroundRefresh({ rerender = false } = {}) {
+  if (refreshing || !state.config.feeds.length || !proxyUrl()) return;
+  refreshing = true;
+  const btn = $('#refreshBtn');
+  btn.classList.add('spinning');
+  btn.setAttribute('aria-busy', 'true');
+  compileFilters();
+  const before = new Set(feedEntries().map(e => e.id));
+  try {
+    await fetchAllFeeds();
+  } finally {
+    refreshing = false;
+    btn.classList.remove('spinning');
+    btn.removeAttribute('aria-busy');
+  }
+  enrichRetries = 0;
+  if (view === 'feed') {
+    const fresh = feedEntries().filter(e => !before.has(e.id)).length;
+    if (rerender || !visibleItems().length) render();
+    else {
+      if (fresh) showNewPill(fresh);
+      renderNotices(feedEntries().length);
+    }
+  }
+  enrichInBackground();
+}
+
+function showNewPill(n) {
+  const pill = $('#newPill');
+  pill.textContent = n === 1 ? '↻ 1 neuer Artikel – anzeigen' : `↻ ${n} neue Artikel – anzeigen`;
+  pill.hidden = false;
+}
+
 // ===========================================================================
 // Listen bauen
 // ===========================================================================
+
+// Verlags-Einträge ohne Inhalt (Impressum, Gutachterlisten, Inhaltsverzeichnis …)
+const JUNK_EXACT = /^\s*(contents|cover|masthead|editorial board|issue information|table of contents|front matter|back matter)\s*$/i;
+const JUNK_START = /^\s*(subscription and copyright information|editorial board\b|issue information\b|inside (front|back) cover|information for (authors|contributors|readers)|instructions (for|to) authors|author guidelines|guide for authors|reviewer acknowledg|thank you to (our )?reviewers|acknowledg(e)?ments? (to|of) reviewers|correction to\b|erratum\b|corrigendum\b|retraction( note)?\b|retracted:|expression of concern|call for papers)/i;
+const isJunk = (e) => JUNK_EXACT.test(e.title || '') || JUNK_START.test(e.title || '');
 
 const activeFeedNames = () => new Set(state.config.feeds.filter(f => !f.off).map(f => f.name));
 
@@ -157,7 +226,7 @@ function feedEntries() {
   for (const f of state.feedCache?.items || []) {
     if (!active.has(f.name)) continue;
     for (const e of f.entries) {
-      if (state.read[e.id] || state.starred[e.id]) continue;
+      if (state.read[e.id] || state.starred[e.id] || isJunk(e)) continue;
       if (!matchFilters(`${e.title} ${e.summary}`, includeRes, excludeRes)) { hiddenByFilter++; continue; }
       const key = e.doi ? 'doi:' + e.doi.toLowerCase() : 'ti:' + normTitle(e.title);
       if (seen.has(key)) continue;       // gleiches Paper aus mehreren Feeds
@@ -168,15 +237,17 @@ function feedEntries() {
   return out;
 }
 
-function starredEntries() {
+function starredEntries(tab = null) {
   return Object.entries(state.starred)
-    .sort((a, b) => (b[1].starred_at || '').localeCompare(a[1].starred_at || ''))
+    .filter(([, s]) => !tab || (tab === 'done') === !!s.done_at)
+    .sort((a, b) => ((b[1].done_at || b[1].starred_at) || '').localeCompare((a[1].done_at || a[1].starred_at) || ''))
     .map(([id, s]) => {
       const p = s.snapshot || {};
       return {
         id, title: p.title || '(ohne Titel)', link: p.link || '', journal: p.feed || '',
         date: p.date || '', summary: p.summary || '', doi: p.doi || null,
         authors: p.authors || '', authors_full: p.authors_full || p.authors || '', note: s.note || '',
+        done: !!s.done_at,
       };
     });
 }
@@ -208,13 +279,18 @@ function shuffle(a) {
 const HEART = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12.1 21.35l-1.1-1.01C5.14 15.24 2 12.39 2 8.98 2 6.24 4.24 4 6.98 4c1.64 0 3.22.76 4.22 2 .99-1.24 2.58-2 4.22-2C18.76 4 21 6.24 21 8.98c0 3.41-3.14 6.26-8.9 11.36l-1 .91z"/></svg>';
 const CROSS = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 0 0-1.41 1.42L10.59 12l-4.9 4.89a1 1 0 1 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.42L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4z"/></svg>';
 
+// Teilen-Knopf nur auf Touch-Geräten mit System-Teilen-Menü
+const canShare = () => 'share' in navigator && matchMedia('(pointer: coarse)').matches;
+
 function linksHtml(e) {
+  const share = canShare() ? '<button type="button" class="meta-link" data-act="share" title="Artikel teilen">📤 Teilen</button>' : '';
   const scholar = `<a class="meta-link" href="https://scholar.google.com/scholar?q=${encodeURIComponent(e.title)}"
     target="_blank" rel="noopener" title="Auf Google Scholar suchen">🎓 Scholar</a>`;
-  if (!e.doi) return scholar;
+  if (!e.doi) return scholar + share;
   return `<button type="button" class="meta-link" data-act="pdf" title="Frei verfügbares PDF suchen (Unpaywall)">📄 PDF</button>`
     + scholar
-    + `<button type="button" class="meta-link" data-act="ris" title="Zitation als RIS herunterladen">Cite (RIS)</button>`;
+    + `<button type="button" class="meta-link" data-act="ris" title="Zitation als RIS herunterladen">Cite (RIS)</button>`
+    + share;
 }
 
 function metaLineHtml(e) {
@@ -237,8 +313,11 @@ function chipsHtml(e) {
 function cardHtml(e, mode) {
   const stars = mode === 'stars';
   return `<div class="item${stars ? ' item-star' : ''}" data-id="${esc(e.id)}"
-      data-search="${esc(`${e.title} ${e.summary}`.toLowerCase())}">
-    ${stars ? '<button class="trash-btn" type="button" data-act="trash" title="Aus der Leseliste entfernen">🗑</button>' : ''}
+      data-search="${esc(searchText(e))}">
+    ${stars ? `<div class="card-tools">${e.done
+      ? '<button type="button" data-act="undone" title="Zurück zu „Zu lesen“">↩</button>'
+      : '<button type="button" data-act="done" title="Als gelesen markieren">✓</button>'}
+      <button type="button" class="trash" data-act="trash" title="Aus der Leseliste entfernen">🗑</button></div>` : ''}
     <h4 style="margin:0 0 .25rem 0;"><a href="${esc(safeUrl(e.link))}" target="_blank" rel="noopener">${highlight(e.title, includeRes)}</a></h4>
     <p class="authors" title="${esc(e.authors_full)}"${e.authors ? '' : ' hidden'}>${esc(e.authors)}</p>
     <p class="meta" style="margin:.1rem 0 .6rem 0;">${metaLineHtml(e)}</p>
@@ -256,6 +335,8 @@ function cardHtml(e, mode) {
   </div>`;
 }
 
+const searchText = (e) => `${e.title} ${e.summary} ${e.authors_full || ''} ${e.note || ''}`.toLowerCase();
+
 // Karte nach nachgeladenen Metadaten aktualisieren (ohne neu zu mischen)
 function updateCard(e) {
   const card = listEl.querySelector(`.item[data-id="${CSS.escape(e.id)}"]`);
@@ -266,7 +347,7 @@ function updateCard(e) {
   ab.innerHTML = highlight(e.summary, includeRes); ab.hidden = !e.summary;
   card.querySelector('.meta').innerHTML = metaLineHtml(e);
   card.querySelector('.chips').innerHTML = chipsHtml(e);
-  card.dataset.search = `${e.title} ${e.summary}`.toLowerCase();
+  card.dataset.search = searchText(e);
   if (body.classList.contains('deck')) {
     if (card.classList.contains('d0')) updateView();
   } else {
@@ -279,9 +360,10 @@ function updateCard(e) {
 // ===========================================================================
 
 function render() {
+  $('#newPill').hidden = true;
   $$('[data-nav]').forEach(a => a.classList.toggle('contrast', a.dataset.nav === view));
   $$('.feed-only').forEach(b => { b.hidden = view !== 'feed'; });
-  q.hidden = view === 'settings';
+  q.hidden = $('#searchBtn').hidden = view === 'settings';
   $('#view-list').hidden = view === 'settings';
   $('#view-settings').hidden = view !== 'settings';
   if (view === 'settings') {
@@ -305,9 +387,9 @@ function renderNotices(entriesCount) {
         keine Journal-Feeds laden. <a href="#settings">In den Einstellungen einrichten →</a></article>`);
     } else {
       const active = activeFeedNames();
-      const errs = (state.feedCache?.items || []).filter(f => f.error && active.has(f.name));
+      const errs = (state.feedCache?.items || []).filter(f => feedBroken(f) && active.has(f.name));
       if (errs.length) {
-        parts.push(`<article class="notice warn">⚠ ${errs.length} Feed(s) nicht erreichbar
+        parts.push(`<article class="notice warn">⚠ ${errs.length} Journal(s) gerade nicht erreichbar
           (<a href="#settings">Details</a>): ${errs.map(f => esc(f.name)).join(', ')}</article>`);
       }
       const inc = filterTerms(c.filters.include);
@@ -319,7 +401,11 @@ function renderNotices(entriesCount) {
       if (!entriesCount) parts.push('<article class="notice warn">Es sind keine neuen Artikel verfügbar.</article>');
     }
   } else if (!entriesCount) {
-    parts.push('<article class="notice info">Deine Leseliste ist noch leer – im Feed mit ♥ Artikel merken.</article>');
+    const any = Object.keys(state.starred).length;
+    parts.push(`<article class="notice info">${starsTab === 'done'
+      ? 'Noch nichts als gelesen markiert. Mit ✓ an einem Artikel verschiebst du ihn hierher.'
+      : any ? 'Alles gelesen 🎉 Neue Artikel merkst du im Feed mit ♥.'
+        : 'Deine Leseliste ist noch leer – im Feed mit ♥ Artikel merken.'}</article>`);
   }
   if (!persistent) {
     parts.push(`<article class="notice warn">Dieser Browser erlaubt keine dauerhafte Speicherung (Privatmodus?).
@@ -334,7 +420,7 @@ function renderList() {
   whyById = new Map();
   const isFeed = view === 'feed';
   $('#listTitle').hidden = isFeed;
-  $('#listTitle').textContent = isFeed ? '' : '⭐ Leseliste';
+  $('#tagbar').hidden = isFeed;
   $('#exportStars').hidden = isFeed;
 
   let entries;
@@ -351,9 +437,12 @@ function renderList() {
     } else {
       shuffle(entries);
     }
-    $('#sortBtn').textContent = { relevance: '🧠 Für mich', new: '🆕 Neueste', shuffle: '🔀 Zufall' }[sort];
+    const [ico, lbl] = { relevance: ['🧠', 'Für mich'], new: ['🆕', 'Neueste'], shuffle: ['🔀', 'Zufall'] }[sort];
+    $('#sortBtn').innerHTML = `${ico} <span class="lbl">${lbl}</span>`;
+    $('#sortBtn').title = `Sortierung: ${lbl} (umschalten)`;
   } else {
-    entries = starredEntries();
+    entries = starredEntries(starsTab);
+    renderStarsHeader(entries);
   }
 
   renderNotices(entries.length);
@@ -447,7 +536,8 @@ function applyView(animate) {
   const deck = view === 'feed' && ls.get('viewMode') !== 'list';
   const doIt = () => {
     body.classList.toggle('deck', deck);
-    $('#viewBtn').textContent = deck ? '📄 Liste' : '🃏 Stapel';
+    $('#viewBtn').innerHTML = deck ? '📄 <span class="lbl">Liste</span>' : '🃏 <span class="lbl">Stapel</span>';
+    $('#viewBtn').title = deck ? 'Als Liste anzeigen' : 'Als Stapel anzeigen';
     if (!deck) checkClampAll();
     updateView();
     maybeSwipeHint();
@@ -522,8 +612,32 @@ function checkRel() {
 
 function applySearch(update = true) {
   const t = q.value.trim().toLowerCase();
-  $$('#list .item').forEach(it => it.classList.toggle('hidden', !!t && !it.dataset.search.includes(t)));
+  // „#tag" findet genau diesen Tag (nicht #tagging); sonst einfache Textsuche
+  const tagRe = /^#[\p{L}\p{N}_-]+$/u.test(t) ? new RegExp(`${t}(?![\\p{L}\\p{N}_-])`, 'u') : null;
+  $$('#list .item').forEach(it => {
+    const hit = !t || (tagRe ? tagRe.test(it.dataset.search) : it.dataset.search.includes(t));
+    it.classList.toggle('hidden', !hit);
+  });
+  $$('#tagbar .tag').forEach(b => b.classList.toggle('active', b.dataset.tag === t));
   if (update) updateView();
+}
+
+// Kopf der Leseliste: Reiter „Zu lesen / Gelesen" + alle #tags zum Antippen
+const TAG_RE = /#[\p{L}\p{N}_-]+/gu;
+function renderStarsHeader(entries) {
+  const all = Object.values(state.starred);
+  const nDone = all.filter(s => s.done_at).length;
+  $('#listTitle').innerHTML = `⭐ Leseliste <span class="seg" role="tablist">
+    <button type="button" role="tab" data-tab="open" aria-selected="${starsTab === 'open'}">Zu lesen (${all.length - nDone})</button>
+    <button type="button" role="tab" data-tab="done" aria-selected="${starsTab === 'done'}">Gelesen (${nDone})</button></span>`;
+  const counts = new Map();
+  for (const e of entries) for (const tag of new Set((e.note.toLowerCase().match(TAG_RE) || []))) {
+    counts.set(tag, (counts.get(tag) || 0) + 1);
+  }
+  const tags = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  $('#tagbar').innerHTML = tags.map(([tag, n]) =>
+    `<button type="button" class="tag" data-tag="${esc(tag)}" title="${n} Artikel">${esc(tag)}</button>`).join('');
+  $('#tagbar').hidden = !tags.length;
 }
 
 function grow(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
@@ -592,6 +706,22 @@ function skip(e, card) {
   });
 }
 
+function markDone(e, card, done) {
+  const s = state.starred[e.id];
+  if (!s) return;
+  const before = s.done_at;
+  if (done) s.done_at = nowIso(); else delete s.done_at;
+  save('starred');
+  hideCard(card, done ? 70 : -70);
+  renderStarsHeader(starredEntries(starsTab));
+  showToast(done ? '✓ Als gelesen markiert' : '↩ Wieder auf „Zu lesen"', () => {
+    if (before) s.done_at = before; else delete s.done_at;
+    save('starred');
+    restoreCard(card);
+    renderStarsHeader(starredEntries(starsTab));
+  });
+}
+
 function unstar(e, card) {
   const backup = state.starred[e.id];
   delete state.starred[e.id];
@@ -636,7 +766,7 @@ async function downloadRis(e) {
 }
 
 async function exportStarsRis(btn) {
-  const list = starredEntries();
+  const list = starredEntries(starsTab);
   btn.setAttribute('aria-busy', 'true');
   const out = new Array(list.length);
   await pool(list.map((e, i) => [e, i]), 4, async ([e, i]) => { out[i] = await risFor(e.doi, e.title); });
@@ -684,7 +814,7 @@ function exportState() {
     version: 1, app: 'Pub.Crawl (web)', exported_at: nowIso(),
     config: { feeds: c.feeds, filters: { include: c.filters.include, exclude: c.filters.exclude } },
     starred: Object.entries(state.starred).map(([id, s]) =>
-      ({ id, starred_at: s.starred_at, snapshot: s.snapshot, note: s.note || '' })),
+      ({ id, starred_at: s.starred_at, snapshot: s.snapshot, note: s.note || '', ...(s.done_at ? { done_at: s.done_at } : {}) })),
     read: Object.entries(state.read).map(([id, r]) =>
       ({ id, read_at: r.read_at, title: r.title || '', summary: r.summary || '' })),
   };
@@ -717,6 +847,7 @@ function importState(text) {
   for (const it of data.starred || []) {
     if (!it?.id || state.starred[it.id]) continue;
     state.starred[it.id] = { starred_at: normTs(it.starred_at), snapshot: it.snapshot || {}, note: it.note || '' };
+    if (it.done_at) state.starred[it.id].done_at = it.done_at;
     s++;
   }
   for (const it of data.read || []) {
@@ -806,7 +937,7 @@ async function renderSettings() {
   const groups = {};
   for (const j of catalog) if (!subscribed.has(j.url)) (groups[j.category || 'Sonstige'] ||= []).push(j);
   const active = activeFeedNames();
-  const errors = (state.feedCache?.items || []).filter(f => f.error && active.has(f.name));
+  const errors = (state.feedCache?.items || []).filter(f => feedBroken(f) && active.has(f.name));
   const msg = flash; flash = '';
 
   $('#view-settings').innerHTML = `
@@ -829,6 +960,9 @@ async function renderSettings() {
 
     ${Object.keys(groups).length ? `<details ${c.feeds.length ? '' : 'open'}><summary>➕ Journals aus dem Katalog hinzufügen</summary>
       <form data-form="catalog">
+        <input type="search" class="catalog-search" placeholder="Journal suchen, z. B. memory oder psychonomic"
+          aria-label="Journal im Katalog suchen" autocomplete="off">
+        <p class="muted catalog-empty" hidden>Kein Journal gefunden. Fehlt eins? Füg es unten per RSS-Link hinzu.</p>
         ${Object.entries(groups).map(([cat, items]) => `<fieldset><legend><strong>${esc(cat)}</strong></legend>
           <div class="row" style="gap:1.25rem;">${[...items].sort((x, y) => x.name.localeCompare(y.name, 'de')).map(j =>
             `<label><input type="checkbox" name="catalog" value="${esc(j.url)}"> ${esc(j.name)}</label>`).join('')}</div>
@@ -968,7 +1102,25 @@ async function onSettingsClick(ev) {
   }
 }
 
+function filterCatalog(input) {
+  const t = input.value.trim().toLowerCase();
+  const form = input.form;
+  let any = false;
+  for (const fs of $$('fieldset', form)) {
+    let n = 0;
+    for (const lab of $$('label', fs)) {
+      const hit = !t || lab.textContent.toLowerCase().includes(t) || fs.querySelector('legend').textContent.toLowerCase().includes(t);
+      lab.hidden = !hit;
+      if (hit) n++;
+    }
+    fs.hidden = n === 0;
+    any ||= n > 0;
+  }
+  form.querySelector('.catalog-empty').hidden = any;
+}
+
 function onSettingsKeydown(ev) {
+  if (ev.target.classList?.contains('catalog-search') && ev.key === 'Enter') { ev.preventDefault(); return; }
   const input = ev.target.closest('.term-input');
   if (!input) return;
   if (ev.key === 'Enter' || ev.key === ',') { ev.preventDefault(); addTerm(input); }
@@ -1038,9 +1190,18 @@ function setupHandlers() {
       case 'trash':
         if (confirm(`„${e.title.slice(0, 60)}" wirklich aus der Leseliste entfernen?`)) unstar(e, card);
         break;
+      case 'done': markDone(e, card, true); break;
+      case 'undone': markDone(e, card, false); break;
       case 'more': toggleMore(card, btn); break;
       case 'pdf': openPdf(e); break;
       case 'ris': downloadRis(e); break;
+      case 'share':
+        navigator.share({
+          title: e.title,
+          text: `${e.title} – ${e.journal}`,
+          url: e.doi ? `https://doi.org/${e.doi}` : safeUrl(e.link),
+        }).catch(() => { /* abgebrochen */ });
+        break;
     }
   });
 
@@ -1051,11 +1212,36 @@ function setupHandlers() {
     const s = state.starred[ta.dataset.id];
     if (!s) return;
     s.note = ta.value;
+    const e = current.get(ta.dataset.id);
+    if (e) { e.note = ta.value; ta.closest('.item').dataset.search = searchText(e); }
     clearTimeout(ta._t);
-    ta._t = setTimeout(() => save('starred'), 500);
+    ta._t = setTimeout(() => { save('starred'); renderStarsHeader(starredEntries(starsTab)); }, 500);
   });
 
   q.addEventListener('input', () => applySearch(true));
+
+  $('#listTitle').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-tab]');
+    if (!b || b.dataset.tab === starsTab) return;
+    starsTab = b.dataset.tab;
+    q.value = '';
+    renderList();
+  });
+  $('#tagbar').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.tag');
+    if (!b) return;
+    q.value = q.value.trim().toLowerCase() === b.dataset.tag ? '' : b.dataset.tag;
+    $('header').classList.toggle('searching', !!q.value);
+    applySearch(true);
+  });
+
+  // Handy: Suchfeld klappt erst auf 🔍 auf; Zuklappen leert die Suche
+  $('#searchBtn').addEventListener('click', () => {
+    const header = $('header');
+    const open = header.classList.toggle('searching');
+    if (open) { q.focus(); return; }
+    if (q.value) { q.value = ''; applySearch(true); }
+  });
 
   $('#exportStars').addEventListener('click', (ev) => { ev.preventDefault(); exportStarsRis(ev.currentTarget); });
 
@@ -1070,8 +1256,15 @@ function setupHandlers() {
     applyView(true);
   });
 
-  $('#refreshBtn').addEventListener('click', () => {
-    if (state.config.feeds.length && proxyUrl()) refresh();
+  $('#refreshBtn').addEventListener('click', () => backgroundRefresh({ rerender: true }));
+
+  $('#newPill').addEventListener('click', () => { render(); window.scrollTo({ top: 0 }); });
+
+  // App kommt aus dem Hintergrund zurück (Handy, anderer Tab) → ggf. still nachladen
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && view === 'feed' && state.feedCache?.items && !cacheFresh()) {
+      backgroundRefresh();
+    }
   });
 
   $('#themeBtn').addEventListener('click', () => {
@@ -1091,6 +1284,7 @@ function setupHandlers() {
   settings.addEventListener('click', onSettingsClick);
   settings.addEventListener('change', onSettingsChange);
   settings.addEventListener('keydown', onSettingsKeydown);
+  settings.addEventListener('input', (ev) => { if (ev.target.classList.contains('catalog-search')) filterCatalog(ev.target); });
 
   // Hilfe-Bubbles am rechten Bildschirmrand nach links rücken, damit sie ganz sichtbar sind
   const placeTip = (ev) => {
@@ -1142,13 +1336,19 @@ function setupHandlers() {
 async function route() {
   const h = location.hash.replace('#', '');
   view = ['feed', 'stars', 'settings'].includes(h) ? h : 'feed';
-  if (view === 'feed' && state.config.feeds.length && proxyUrl() && !cacheFresh()) {
+  const canFetch = state.config.feeds.length && proxyUrl();
+  if (view === 'feed' && canFetch && !state.feedCache?.items) {
     $$('[data-nav]').forEach(a => a.classList.toggle('contrast', a.dataset.nav === view));
-    await refresh();
+    await firstLoad();
     return;
   }
-  render();
-  if (view === 'feed') enrichInBackground();
+  render();                                   // gespeicherter Stand sofort
+  if (view !== 'feed') return;
+  enrichInBackground();
+  if (canFetch && !cacheFresh()) {
+    // Journal-Auswahl geändert → danach neu mischen; sonst nur „neue Artikel" anbieten
+    backgroundRefresh({ rerender: state.feedCache.configKey !== configKey() });
+  }
 }
 
 // Alte Allowlist (nur diese Journals zeigen) → An/Aus-Schalter je Journal

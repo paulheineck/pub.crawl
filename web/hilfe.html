@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <title>Anleitung – Pub.Crawl</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="vendor/pico.min.css">
   <link rel="stylesheet" href="style.css">
   <script>
@@ -40,8 +40,10 @@
       <strong>↻</strong> lädst du die Journals neu.</li>
     <li>Tastatur: <kbd>l</kbd> merken, <kbd>d</kbd> ausblenden, <kbd>/</kbd> suchen, <kbd>?</kbd> alle Kürzel.</li>
   </ul>
-  <p>Abstracts und Autoren werden nach dem Laden im Hintergrund ergänzt – manche Karten füllen sich also erst nach
-    ein paar Sekunden.</p>
+  <p>Beim Öffnen siehst du sofort deinen letzten Stand; neue Artikel lädt Pub.Crawl still im Hintergrund nach und
+    meldet sie mit <strong>„↻ … neue Artikel"</strong>. Abstracts und Autoren werden ebenfalls nachgeladen – manche
+    Karten füllen sich also erst nach ein paar Sekunden. Inhaltsleere Verlagseinträge (Impressum, Gutachterlisten,
+    Errata) blendet Pub.Crawl automatisch aus.</p>
 
   <h2>3. Sortierung: Zufall, Neueste, Für mich</h2>
   <p>Der Knopf rechts neben der Suche wechselt die Reihenfolge. <strong>🧠 Für mich</strong> wird freigeschaltet,
@@ -51,12 +53,16 @@
 
   <h2>4. Die Leseliste</h2>
   <ul>
-    <li><strong>📝 Notiz</strong> – eigene Gedanken oder <code>#tags</code>, wird automatisch gespeichert.</li>
+    <li><strong>📝 Notiz</strong> – eigene Gedanken oder <code>#tags</code>, wird automatisch gespeichert. Alle Tags
+      erscheinen oben als Knöpfe – antippen zeigt nur Artikel mit diesem Tag. Die Suche findet auch Notizen.</li>
+    <li><strong>✓</strong> – gelesen: Der Artikel wandert in den Reiter <em>Gelesen</em>, damit „Zu lesen"
+      übersichtlich bleibt. Mit <strong>↩</strong> holst du ihn zurück.</li>
     <li><strong>📄 PDF</strong> – sucht eine frei zugängliche Version (dafür in den Einstellungen eine E-Mail für
       Unpaywall eintragen; ohne öffnet sich die Verlagsseite).</li>
     <li><strong>Cite (RIS)</strong> – Zitation für Zotero, EndNote, Citavi, Mendeley.
       <strong>⬇️ Exportieren</strong> lädt die ganze Leseliste auf einmal.</li>
     <li><strong>🗑</strong> – von der Leseliste entfernen.</li>
+    <li><strong>📤 Teilen</strong> (Handy) – Artikel per Messenger oder Mail weitergeben.</li>
   </ul>
 
   <h2>5. Filter</h2>
@@ -96,9 +102,14 @@
       hinzufügen.</p>
   </details>
   <details>
-    <summary>Geht das auch auf dem Handy?</summary>
-    <p>Ja. Tipp: Im Browser-Menü „Zum Startbildschirm hinzufügen" – dann startet Pub.Crawl wie eine App. Die Daten
-      auf Handy und Rechner sind getrennt; per Backup kannst du sie übertragen.</p>
+    <summary>Geht das auch auf dem Handy – als App?</summary>
+    <p>Ja, und zwar am besten installiert: Pub.Crawl bekommt dann ein eigenes Icon und startet ohne Browserleiste.</p>
+    <ul>
+      <li><strong>iPhone (Safari):</strong> Teilen-Symbol □↑ → „Zum Home-Bildschirm".</li>
+      <li><strong>Android (Chrome):</strong> Menü ⋮ → „App installieren" bzw. „Zum Startbildschirm hinzufügen".</li>
+      <li><strong>Rechner (Chrome/Edge):</strong> Installieren-Symbol rechts in der Adressleiste.</li>
+    </ul>
+    <p>Die Daten auf Handy und Rechner sind getrennt; per Backup kannst du sie übertragen.</p>
   </details>
   <details>
     <summary>Gibt es Pub.Crawl auch zum Installieren?</summary>

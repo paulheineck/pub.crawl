@@ -252,16 +252,20 @@ export async function fetchOneFeed(feed, ctx) {
     }
     const entries = [];
     for (const r of raw) {
-      let summary = stripCitation(htmlToText(r.summaryHtml)).replace(/^abstract[:\s]+/i, '');
-      if (summary === '.' ) summary = '';
-      // ScienceDirect: „Publication date: … Source: … Author(s): …" statt Abstract
-      const sd = summary.match(/^Publication date:\s*(.*?)\s*Source:.*?(?:Author\(s\):\s*(.*))?$/i);
+      const text = htmlToText(r.summaryHtml);
+      let summary;
+      // ScienceDirect: „Publication date: … Source: … Author(s): …" statt Abstract.
+      // Vor stripCitation prüfen – das würde bei „Volume 278 … M." mitten in den Namen schneiden.
+      const sd = text.match(/^Publication date:\s*(.*?)\s*Source:.*?(?:Author\(s\):\s*(.*))?$/i);
       if (sd) {
         // nur echte Tagesangaben – „January 2027" ist das (künftige) Heft, nicht das Erscheinen
         const online = sd[1].match(/available online\s*(\d{1,2}\s+\w+\s+\d{4})/i);
         if (online) r.date = parseDate(online[1]);
         if (!r.authors.length && sd[2]) r.authors = sd[2].split(',').map(s => s.trim());
         summary = '';
+      } else {
+        summary = stripCitation(text).replace(/^abstract[:\s]+/i, '');
+        if (summary === '.') summary = '';
       }
       if (!matchFilters(`${r.title} ${summary}`, includeRes, excludeRes)) continue;
       const [authors, authors_full] = cleanAuthors(r.authors);
