@@ -359,3 +359,26 @@ footer.site a { color: inherit; }
 
 /* Filter-Treffer: ohne Innenabstand, sonst reißt die Markierung Wörter auseinander */
 #list mark { padding: 0; border-radius: 2px; }
+
+/* ---- Wischen (Touch) ---------------------------------------------------------- */
+/* Senkrecht scrollt weiter der Browser, waagerecht übernimmt swipe.js */
+body.deck .item.d0 { touch-action: pan-y; }
+body.deck .item.d0.dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+body.deck .item.d0 a { -webkit-user-drag: none; }
+
+.swipe-hint { display: none; }
+body.deck .item.d0 .swipe-hint {
+  display: block; position: absolute; top: 1.1rem; z-index: 3; pointer-events: none;
+  padding: .2rem .65rem; border: 3px solid currentColor; border-radius: .5rem;
+  font-weight: 800; font-size: 1.1rem; letter-spacing: .03em; text-transform: uppercase;
+  background: var(--pico-card-background-color, #fff);
+  opacity: 0;
+}
+body.deck .item.d0 .swipe-hint.like {
+  left: 1.1rem; color: #1a9e4b; transform: rotate(-10deg);
+  opacity: clamp(0, calc(var(--swipe, 0) * 1.6), 1);
+}
+body.deck .item.d0 .swipe-hint.skip {
+  right: 1.1rem; color: #d6334b; transform: rotate(10deg);
+  opacity: clamp(0, calc(var(--swipe, 0) * -1.6), 1);
+}

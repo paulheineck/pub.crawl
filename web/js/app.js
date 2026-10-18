@@ -9,6 +9,7 @@ import {
 } from './feeds.js';
 import { getMeta, doiByTitle, persistMeta, openAccessUrl, risFor } from './meta.js';
 import { buildWeights, score, relevanceCounts, activityStats } from './relevance.js';
+import { enableSwipe } from './swipe.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -246,7 +247,9 @@ function cardHtml(e, mode) {
     ${stars ? `<div class="note-wrap"><span class="note-label">📝 Deine Notiz</span>
       <textarea class="note" data-id="${esc(e.id)}" rows="1" placeholder="Notiz oder #tags hinzufügen …">${esc(e.note)}</textarea></div>` : ''}
     <div class="chips">${chipsHtml(e)}</div>
-    ${mode === 'feed' ? `<div class="choicebar">
+    ${mode === 'feed' ? `<div class="swipe-hint like" aria-hidden="true">♥ Merken</div>
+    <div class="swipe-hint skip" aria-hidden="true">✕ Weg</div>
+    <div class="choicebar">
       <button class="choice skip" type="button" data-act="skip" title="Ausblenden (D)">${CROSS}</button>
       <button class="choice like" type="button" data-act="like" title="Auf Leseliste (L)">${HEART}</button>
     </div>` : ''}
@@ -447,6 +450,7 @@ function applyView(animate) {
     $('#viewBtn').textContent = deck ? '📄 Liste' : '🃏 Stapel';
     if (!deck) checkClampAll();
     updateView();
+    maybeSwipeHint();
   };
   if (animate) {
     listEl.style.opacity = '0';
@@ -460,7 +464,7 @@ function hideCard(card, dx) {
   card.classList.add('leaving');
   const deck = body.classList.contains('deck');
   if (ls.get('animateCards') !== '0') {
-    const fly = deck ? dx * 6 : dx;
+    const fly = deck ? Math.sign(dx) * Math.max(420, innerWidth) : dx;
     card.style.transition = 'transform .3s ease, opacity .3s ease';
     card.style.transform = `translateX(${fly}px) rotate(${dx < 0 ? -8 : 8}deg)`;
     card.style.opacity = '0';
@@ -476,6 +480,7 @@ function restoreCard(card) {
   clearTimeout(card._hideT);
   card.classList.remove('gone', 'leaving');
   card.style.transition = card.style.transform = card.style.opacity = card.style.zIndex = '';
+  card.style.removeProperty('--swipe');          // Wisch-Stempel wieder ausblenden
   updateView();
 }
 
@@ -532,6 +537,7 @@ function showToast(msg, undoFn) {
   const toast = $('#toast');
   clearTimeout(toastTimer);
   toast.querySelector('.toast-msg').textContent = msg;
+  toast.querySelector('.toast-undo').hidden = !undoFn;
   toast.classList.add('show');
   toast.querySelector('.toast-undo').onclick = () => {
     clearTimeout(toastTimer);
@@ -539,6 +545,15 @@ function showToast(msg, undoFn) {
     undoFn();
   };
   toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
+}
+
+// Einmaliger Tipp für Touch-Geräte, sobald der Stapel zum ersten Mal da ist
+const isTouch = () => matchMedia('(pointer: coarse)').matches;
+function maybeSwipeHint() {
+  if (!isTouch() || ls.get('swipeHintSeen') === '1') return;
+  if (view !== 'feed' || !body.classList.contains('deck') || !visibleItems().length) return;
+  ls.set('swipeHintSeen', '1');
+  showToast('👉 Wischen: rechts = merken, links = weg', null);
 }
 
 function pruneReads() {
@@ -1000,6 +1015,17 @@ function setCurrent(el) {
 }
 
 function setupHandlers() {
+  enableSwipe(listEl, {
+    canSwipe: (card) => view === 'feed' && body.classList.contains('deck')
+      && card.classList.contains('d0') && !card.classList.contains('leaving'),
+    onSwipe: (card, dir) => {
+      const e = current.get(card.dataset.id);
+      if (!e) return;
+      navigator.vibrate?.(10);                    // kurzes Feedback (Android)
+      if (dir === 'right') like(e, card); else skip(e, card);
+    },
+  });
+
   listEl.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-act]');
     if (!btn) return;
